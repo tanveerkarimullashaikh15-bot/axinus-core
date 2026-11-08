@@ -45,9 +45,9 @@ if "PHONE FIRST RULE" not in DELEG:
 
 # ---------- fast path ----------
 _STRIP = re.compile(r"^(?:hey |ok |okay )?(?:axinus|axis|jarvis)[,.! ]*", re.I)
-def _clean(t): return _STRIP.sub("", str(t).strip()).strip(" .!?")
+def _fclean(t): return _STRIP.sub("", str(t).strip()).strip(" .!?")
 def fast_parse(task):
-    t = _clean(task); low = t.lower()
+    t = _fclean(task); low = t.lower()
     if len(t) > 160: return None
     pend = PEND["kind"] and time.time() - PEND["t"] < 180
     if pend and re.fullmatch(r"(?:(?:haan|han|ha|yes|yeah|ok|okay|ji|theek hai)[, ]*)?(?:(?:haan|yes|ok|ji)[, ]*)?(?:kar do|bhej do|send kar do|call kar do|call karo|bhejo|laga do|lagao|send|send karo|yes|haan|han|ha|ok|okay|theek hai)(?: ji| sir| boss)?", low): return ("confirm", "", "")

@@ -40,7 +40,7 @@ def cands(role):
             if re.search(pat, i, re.I) and (prov, i) not in out: out.append((prov, i))
     return [c for c in out if R0["dead"].get(c, 0) < time.time()]
 
-def _wrap(m):
+def _msgwrap(m):
     if not isinstance(m, dict): return m
     tcs = [types.SimpleNamespace(id=c.get("id") or ("c%d" % i), function=types.SimpleNamespace(name=c["function"]["name"], arguments=c["function"].get("arguments") or "{}")) for i, c in enumerate(m.get("tool_calls") or [])]
     return types.SimpleNamespace(content=m.get("content") or "", tool_calls=tcs or None)
@@ -51,7 +51,7 @@ def _http(url, key, model, msgs, tools, mt, timeout):
     r = requests.post(url, headers={"Authorization": "Bearer " + str(key), "Content-Type": "application/json"}, json=p, timeout=timeout)
     if r.status_code != 200: raise RuntimeError("HTTP %s: %s" % (r.status_code, r.text[:160]))
     j = r.json(); u = j.get("usage") or {}
-    return _wrap(j["choices"][0]["message"]), (u.get("prompt_tokens", 0) or 0, u.get("completion_tokens", 0) or 0)
+    return _msgwrap(j["choices"][0]["message"]), (u.get("prompt_tokens", 0) or 0, u.get("completion_tokens", 0) or 0)
 def _call(c, msgs, tools, role, mt, timeout):
     prov, model = c
     if prov == "groq":

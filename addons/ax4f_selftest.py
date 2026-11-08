@@ -18,7 +18,11 @@ def selftest(deep=False):
         r = fast_parse(q)
         if not r or r[0] != a or (tg and tg not in str(r[1]).lower()): bad.append(q[:28] + "->" + str(r and r[0]))
     out.append({"name": "Voice-command parser (%d cmds)" % len(GOLD), "ok": not bad, "detail": "; ".join(bad)[:110] or "all correct", "ms": 0})
-    out.append({"name": "Twilio removed", "ok": "TWILIO_SID" not in globals() and "send_whatsapp" in REG and "twilio" not in (DESC.get("send_whatsapp", "")).lower(), "detail": "no twilio keys/code", "ms": 0})
+    def _tw():
+        import inspect
+        src = inspect.getsource(send_whatsapp).lower() + DESC.get("send_whatsapp", "").lower()
+        return ("twilio" not in src and "send_whatsapp" in REG), "WhatsApp ab phone se (Twilio code nahi)"
+    out.append(_t("Twilio removed", _tw))
     out.append(_t("Roles have live models", lambda: (all(cands(r) for r in ("brain", "coder", "phone")), ", ".join("%s=%d" % (r, len(cands(r))) for r in ROLES))))
     def pdf():
         o = REP_DIR + "/_selftest.pdf"; build_pdf(o, "Self test", "x", "sum", [("A", "- a\n- b\n\n| x | y |\n|--|--|\n| 1 | 2 |")], None, [], ["p"]); ok, i = verify_pdf(o); return ok, "%s | %s" % (ENGINE_LAST[0], i)
