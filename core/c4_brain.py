@@ -160,7 +160,10 @@ def start_job(q):
     now = time.time()
     old = RECENT.get(key)
     if old and now - old[1] < 25:
-        return JSON({"id": old[0]})
+        oj = JOBS.get(old[0], {})
+        bad = oj.get("status") == "done" and re.match(r"\s*(error|nahi hua|not completed|sorry|brain error)", str(oj.get("text", "")), re.I)
+        if not bad:
+            return JSON({"id": old[0]})
     jid = uuid.uuid4().hex[:8]
     RECENT[key] = (jid, now)
     for k in [k for k, v in RECENT.items() if now - v[1] > 120]:
