@@ -59,7 +59,13 @@ if "SERVER" in globals(): SERVER.should_exit = True; time.sleep(1.5)
 os.system("pkill cloudflared")
 SERVER = uvicorn.Server(uvicorn.Config(app, host="127.0.0.1", port=8000, log_level="warning"))
 threading.Thread(target=SERVER.run, daemon=True).start()
-os.system("wget -q -nc https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -O /content/cloudflared && chmod +x /content/cloudflared")
+CFB = "/content/cloudflared"
+for _try in range(3):
+    if not (os.path.exists(CFB) and os.path.getsize(CFB) > 5_000_000):
+        os.system("rm -f %s; wget -q https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -O %s" % (CFB, CFB))
+    os.system("chmod +x " + CFB)
+    if os.path.exists(CFB) and os.path.getsize(CFB) > 5_000_000 and os.access(CFB, os.X_OK): break
+    time.sleep(2)
 p = subprocess.Popen(["/content/cloudflared", "tunnel", "--url", "http://127.0.0.1:8000", "--no-autoupdate"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
 CF_LOG = []
 threading.Thread(target=lambda: [CF_LOG.append(l) for l in p.stdout], daemon=True).start()
