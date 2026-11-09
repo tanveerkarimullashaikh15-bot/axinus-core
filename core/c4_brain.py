@@ -168,8 +168,12 @@ def start_job(q):
     JOBS[jid] = {"status": "running"}
 
     def work():
-        with LOCK:
+        pl = globals().get("phone_like")
+        if pl and pl(q):
             a = ask(q)
+        else:
+            with LOCK:
+                a = ask(q)
         log(q, a)
         JOBS[jid] = {"status": "done", "text": str(a)}
 

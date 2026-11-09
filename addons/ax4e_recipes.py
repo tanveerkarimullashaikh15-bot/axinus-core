@@ -46,7 +46,12 @@ if "PHONE FIRST RULE" not in DELEG:
 # ---------- fast path ----------
 _STRIP = re.compile(r"^(?:hey |ok |okay )?(?:axinus|axis|jarvis)[,.! ]*", re.I)
 def _fclean(t): return _STRIP.sub("", str(t).strip()).strip(" .!?")
+_BADT = re.compile(r"\b(aur|and|karke|phir|fir|then|play|open karo|kholo)\b", re.I)
 def fast_parse(task):
+    r = _fast_parse(task)
+    if r and r[0] in ("youtube_search", "web_search", "type", "whatsapp_message", "call") and _BADT.search(str(r[1])): return None
+    return r
+def _fast_parse(task):
     t = _fclean(task); low = t.lower()
     if len(t) > 160: return None
     pend = PEND["kind"] and time.time() - PEND["t"] < 180
@@ -75,19 +80,65 @@ def fast_parse(task):
         n = (m.group(1) or m.group(2) or "").replace(" app", "").strip()
         if n and len(n.split()) <= 3 and n not in ("file", "pdf"): return ("open_app", n, "")
     return None
+_PH_KW = re.compile(r"\b(open|kholo|khol|search|dhundo|call|phone|fone|message|msg|whatsapp|youtube|yt|scroll|type|play|app|instagram|insta|chrome|google|drive|vedantu|claude|chatgpt|free ?fire|split|back|home|click|tap|neeche|upar)\b", re.I)
+def phone_like(q):
+    q = str(q)
+    try: return bool(fast_parse(q)) or (len(q) < 140 and bool(_PH_KW.search(q)))
+    except Exception: return False
+LLM_SYS = ("You convert a Hinglish/English spoken command into phone actions. Output ONLY a JSON array (max 4 steps), or [] if it is NOT a phone/app action (questions, chat, research, facts). "
+ "Step = {\"a\":action,\"t\":target,\"x\":text}. Actions: open_app(t=app name) | youtube_search(t=query) | web_search(t=query) | whatsapp_message(t=contact,x=message) | call(t=contact or number) | scroll_down | scroll_up | type(t=text) | click_text(t=visible text) | split_screen | back | home. "
+ "To play a video: youtube_search then click_text with t='play video'. Clean the query: remove words like open karo, search karo, aur, and, play karo. Examples: "
+ "'youtube open karo aur cartoon search karo and play karo' -> [{\"a\":\"youtube_search\",\"t\":\"cartoon\"},{\"a\":\"click_text\",\"t\":\"play video\"}]; "
+ "'whatsapp kholo' -> [{\"a\":\"open_app\",\"t\":\"WhatsApp\"}]; 'train timings to Solapur' -> []; 'YouTube Shilpa Shetty' -> [{\"a\":\"youtube_search\",\"t\":\"Shilpa Shetty\"}].")
+OKA = {"open_app", "youtube_search", "web_search", "whatsapp_message", "call", "scroll_down", "scroll_up", "type", "click_text", "split_screen", "back", "home"}
+def llm_steps(task):
+    t, _ = llm("fast", LLM_SYS, str(task)[:200], mt=260, timeout=20)
+    m = re.search(r"\[.*\]", t, re.S)
+    if not m: return []
+    out = []
+    for d in json.loads(m.group(0))[:4]:
+        if isinstance(d, dict) and d.get("a") in OKA: out.append((d["a"], str(d.get("t", "")), str(d.get("x", ""))))
+    return out
+def _preempt():
+    PHONE["q"].clear(); c = PHONE.get("cur")
+    if c and not c["ev"].is_set(): PHONE["stop"] = True; c["res"] = "Cancelled: naya command aaya."; c["ev"].set()
 _ASK_CORE = globals().get("_ASK_CORE") or ask
-def ask(task):
-    fp = None
-    try: fp = fast_parse(task)
-    except Exception: pass
-    if not fp: return _ASK_CORE(task)
+def _run_steps(task, steps):
     JOB["workers"] = []; JOB["models"] = {}; TRACE.clear()
-    emit("brain", "mark", "FAST PATH: " + fp[0] + " " + str(fp[1])[:40])
-    with Stage("phone", "Phone: " + fp[0], "recipe") as st:
-        res = phone_do(*fp)
-        st.fail = res.startswith(("Error", "Not completed", "BLOCKED"))
-    out = res.replace("Done: ", "", 1).replace("Not completed: ", "Nahi hua, Sir: ", 1)
+    outs = []; ok = True
+    _preempt()
+    for i, st in enumerate(steps):
+        emit("brain", "mark", "PHONE: " + st[0] + " " + str(st[1])[:40])
+        with Stage("phone", "Phone: " + st[0], "recipe") as s_:
+            res = phone_do(*st); s_.fail = res.startswith(("Error", "Not completed", "BLOCKED"))
+        outs.append(res.replace("Done: ", "", 1).replace("Not completed: ", "Nahi hua, Sir: ", 1))
+        if s_.fail: ok = False; break
+        if i + 1 < len(steps) and st[0] in ("youtube_search", "web_search", "open_app"): time.sleep(2.5)
+    out = " | ".join(outs)
     try: remember_turn(task, out)
     except Exception: pass
     return out
-print("✅ ax4e recipes OK | tools: phone_do, send_whatsapp (confirm flow) + fast path")
+def ask(task):
+    JOB["links"] = []
+    fp = None
+    try: fp = fast_parse(task)
+    except Exception: pass
+    r = None
+    if fp: r = _run_steps(task, [fp])
+    elif len(str(task)) < 140 and _PH_KW.search(str(task)):
+        try: steps = llm_steps(task)
+        except Exception as e: steps = []; emit("brain", "mark", "parse fail: " + str(e)[:50])
+        if steps: r = _run_steps(task, steps)
+    if r is None: r = _ASK_CORE(task)
+    for l in JOB.get("links", []):
+        if l not in r: r += "\n" + l
+    return r
+_CALL0 = globals().get("_CALL0") or CALL
+def CALL(name, args):
+    res = _CALL0(name, args)
+    try:
+        for m in re.finditer(r"https?://\S+/f\?p=\S+", str(res)):
+            if m.group(0) not in JOB.setdefault("links", []): JOB["links"].append(m.group(0))
+    except Exception: pass
+    return res
+print("✅ ax4e recipes OK | tools: phone_do, send_whatsapp (confirm flow) + fast path + LLM command parser")
