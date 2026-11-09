@@ -24,7 +24,7 @@ const URL_='wss://generativelanguage.googleapis.com/ws/google.ai.generativelangu
 const SYS=`You are AXINUS, the sharp executive personal AI assistant to Tanveer Shaikh.
 Address Tanveer strictly as 'Sir' or 'Boss'. Speak in natural Modern Indian English mixed with simple daily Hinglish (e.g. 'Yes Sir, I am on it', 'Kaam ho gaya hai Sir, please check.').
 NEVER use pure or textbook Hindi words. Keep voice responses ultra-short (1-2 lines).
-For ANY task (apps, calls, messages, search, notes, coding, files) say 'On it Sir' and call ask_brain at once. NEVER claim a task is done, a message is sent or a call is made until ask_brain returns; then repeat its result in one short line. If ask_brain says Nahi hua/Error, say so honestly. If it asks for yes/no confirmation, ask the user. Greetings: reply directly.`;
+For ANY task (apps, calls, messages, search, notes, coding, files) say 'On it Sir' and call ask_brain at once. NEVER claim a task is done, a message is sent or a call is made until ask_brain returns; then repeat its result in one short line. If ask_brain says Nahi hua/Error, say so honestly. If it asks for yes/no confirmation, ask the user. Greetings: reply directly. If the audio is unclear, background noise, TV or other people talking, or not clearly a command for you, stay completely silent and do nothing - never invent a task.`;
 
 const SETUP={setup:{model:'models/'+MODEL,generationConfig:{responseModalities:['AUDIO']},systemInstruction:{parts:[{text:SYS}]},tools:[{functionDeclarations:[{name:'ask_brain',description:'Execute real tools: YouTube, WhatsApp, Email, Search, Notes, Image, Coding.',parameters:{type:'OBJECT',properties:{request:{type:'STRING',description:'Task detail'}},required:['request']}}]}],inputAudioTranscription:{},outputAudioTranscription:{}}};
 let ws=null,mic=null,ctxIn=null,proc=null,ctxOut=null,nextT=0,srcs=[],ready=false;
@@ -66,6 +66,7 @@ const src=ctxIn.createMediaStreamSource(mic);
 proc=ctxIn.createScriptProcessor(2048,1,1);
 proc.onaudioprocess=e=>{
 if(!ws||ws.readyState!==1||!ready)return;
+if(srcs.length||(ctxOut&&ctxOut.currentTime<nextT+0.6))return;
 const f=e.inputBuffer.getChannelData(0);const p=new Int16Array(f.length);
 for(let i=0;i<f.length;i++){const v=Math.max(-1,Math.min(1,f[i]));p[i]=v<0?v*32768:v*32767;}
 ws.send(JSON.stringify({realtimeInput:{audio:{data:b64(new Uint8Array(p.buffer)),mimeType:'audio/pcm;rate=16000'}}}));
@@ -103,9 +104,13 @@ st('live - ready Sir!');
 return out;
 }
 
+const RT={};
 async function runTool(fc){
 const req=(fc.args&&fc.args.request)||'';
-const out=await executeTask(req);
+const k=req.toLowerCase().replace(/\W+/g,' ').trim();
+if(RT[k]&&Date.now()-RT[k].t<25000){const o=await RT[k].p;if(ws&&ws.readyState===1)ws.send(JSON.stringify({toolResponse:{functionResponses:[{id:fc.id,name:fc.name,response:{output:{value:String(o).slice(0,1800)}}}]}}));return;}
+RT[k]={t:Date.now(),p:executeTask(req)};
+const out=await RT[k].p;
 if(ws&&ws.readyState===1)ws.send(JSON.stringify({toolResponse:{functionResponses:[{id:fc.id,name:fc.name,response:{output:{value:String(out).slice(0,1800)}}}]}}));
 }
 
