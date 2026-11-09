@@ -152,8 +152,19 @@ def get_token():
         return JSON({"error": str(e)[:300]})
 
 
+RECENT = {}
+
+
 def start_job(q):
+    key = re.sub(r"\W+", " ", str(q).lower()).strip()
+    now = time.time()
+    old = RECENT.get(key)
+    if old and now - old[1] < 25:
+        return JSON({"id": old[0]})
     jid = uuid.uuid4().hex[:8]
+    RECENT[key] = (jid, now)
+    for k in [k for k, v in RECENT.items() if now - v[1] > 120]:
+        RECENT.pop(k, None)
     JOBS[jid] = {"status": "running"}
 
     def work():
