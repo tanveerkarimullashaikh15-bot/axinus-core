@@ -110,6 +110,38 @@ ALERTS = globals().get("ALERTS") or []
 ALN = globals().get("ALN") or [0]
 def _tasks(): return jr(TASKS_PATH, [])
 
+
+def _nl_when(s):
+    t = str(s).lower().strip(); now = now_ist()
+    m = re.search(r"(\d+(?:\.\d+)?)\s*(min|mins|minute|minutes|minat|ghanta|ghante|ghanta|hour|hours|hr|hrs|din|day|days)\b", t)
+    if m and re.search(r"\b(in|me|mein|baad|after|ke baad|later)\b", t):
+        n = float(m.group(1)); u = m.group(2)
+        return now + (datetime.timedelta(minutes=n) if u.startswith(("min", "minat")) else datetime.timedelta(hours=n) if u.startswith(("gh", "h")) else datetime.timedelta(days=n))
+    day = now.date()
+    if re.search(r"\b(parso|day after tomorrow)\b", t): day += datetime.timedelta(days=2)
+    elif re.search(r"\b(kal|tomorrow|tmrw)\b", t): day += datetime.timedelta(days=1)
+    hh = mm = None
+    m = re.search(r"(\d{1,2})(?::(\d{2}))?\s*(am|pm|baje|bje)?", t)
+    if m and (m.group(2) or m.group(3)):
+        hh = int(m.group(1)); mm = int(m.group(2) or 0); ap = m.group(3)
+        if ap == "pm" and hh < 12: hh += 12
+        elif ap == "am" and hh == 12: hh = 0
+        elif ap in ("baje", "bje") or ap is None:
+            if re.search(r"shaam|sham|evening|raat|night|dopahar|afternoon", t) and hh < 12: hh += 12
+    else:
+        m2 = re.search(r"\b(\d{1,2})\b", t)
+        if m2 and re.search(r"subah|morning|shaam|sham|evening|raat|night|dopahar|afternoon", t):
+            hh = int(m2.group(1)); mm = 0
+            if re.search(r"shaam|sham|evening|raat|night|dopahar|afternoon", t) and hh < 12: hh += 12
+        elif re.search(r"subah|morning", t): hh, mm = 8, 0
+        elif re.search(r"shaam|sham|evening", t): hh, mm = 18, 0
+        elif re.search(r"raat|night", t): hh, mm = 21, 0
+        elif re.search(r"dopahar|afternoon", t): hh, mm = 14, 0
+    if hh is None or hh > 23: return None
+    d = datetime.datetime.combine(day, datetime.time(hh, mm), tzinfo=IST)
+    if d <= now and not re.search(r"\b(kal|tomorrow|parso|tmrw)\b", t): d += datetime.timedelta(days=1)
+    return d
+
 def parse_when(s):
     s = str(s).strip().replace("T", " ")
     for fmt in ("%Y-%m-%d %H:%M", "%Y-%m-%d %H:%M:%S", "%d-%m-%Y %H:%M", "%d/%m/%Y %H:%M", "%Y-%m-%d %I:%M %p", "%Y-%m-%d %I %p"):
@@ -120,6 +152,8 @@ def parse_when(s):
         h = int(m.group(1)) % 12 + (12 if (m.group(3) or "").lower() == "pm" else 0) if m.group(3) else int(m.group(1))
         d = now_ist().replace(hour=h, minute=int(m.group(2)), second=0, microsecond=0)
         return d if d > now_ist() else d + datetime.timedelta(days=1)
+    d0 = _nl_when(s)
+    if d0: return d0
     try:
         from dateutil import parser as dp
         d = dp.parse(s, dayfirst=True)

@@ -8,7 +8,7 @@ def youtube_search(query: str):
             return "No YouTube video found: " + str(r.get("error", {}).get("message", ""))[:150]
         return "\n".join("• " + it["snippet"]["title"] + " -> https://youtu.be/" + it["id"]["videoId"] for it in r["items"])
     except Exception as e:
-        return "YouTube API Error: " + type(e).__name__
+        return "YouTube API Error: " + type(e).__name__ + ": " + re.sub(r"key=[\w-]+", "key=***", str(e))[:90]
 
 
 def generate_image(prompt: str):
