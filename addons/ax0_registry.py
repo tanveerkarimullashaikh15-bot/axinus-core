@@ -10,9 +10,9 @@ SAMBA_URL = "https://api.sambanova.ai/v1/chat/completions"
 BADM = re.compile(r"whisper|guard|tts|orpheus|embed|safeguard|rerank|allam|prompt", re.I)
 GROQ_DAILY = 200000
 ROLES = {
-    "brain":    [("groq", r"gpt-oss-120b"), ("groq", r"qwen"), ("gemini", r"lite"), ("gemini", r"^(?!.*lite).*flash"), ("groq", r"gpt-oss-20b"), ("samba", r"gpt-oss")],
-    "coder":    [("groq", r"qwen"), ("groq", r"gpt-oss-120b"), ("gemini", r"^(?!.*lite).*flash"), ("gemini", r"lite"), ("samba", r"glm|minimax")],
-    "reasoner": [("groq", r"gpt-oss-120b"), ("gemini", r"^(?!.*lite).*flash"), ("groq", r"qwen"), ("samba", r"glm|gpt-oss|minimax")],
+    "brain":    [("groq", r"gpt-oss-120b"), ("groq", r"qwen"), ("gemini", r"lite"), ("gemini", r"^(?!.*lite).*flash"), ("groq", r"gpt-oss-20b")],
+    "coder":    [("groq", r"qwen"), ("groq", r"gpt-oss-120b"), ("gemini", r"^(?!.*lite).*flash"), ("gemini", r"lite")],
+    "reasoner": [("groq", r"gpt-oss-120b"), ("gemini", r"^(?!.*lite).*flash"), ("groq", r"qwen")],
     "phone":    [("groq", r"gpt-oss-20b"), ("groq", r"qwen"), ("gemini", r"lite"), ("groq", r"gpt-oss-120b")],
     "designer": [("gemini", r"lite"), ("groq", r"gpt-oss-20b"), ("groq", r"qwen"), ("gemini", r"^(?!.*lite).*flash")],
     "writer":   [("gemini", r"^(?!.*lite).*flash"), ("groq", r"gpt-oss-120b"), ("gemini", r"lite"), ("groq", r"qwen")],
@@ -29,6 +29,7 @@ def _groq_ids():
     return R0["gids"] or ["openai/gpt-oss-120b", "openai/gpt-oss-20b", "qwen/qwen3.8-27b"]
 def _gem_ids(): return [m for m in GEMINI_MODELS if m not in DEAD]
 def _samba_ids():
+    return []  # SambaNova removed (no free credits)
     if SAMBA_DEAD[0] > time.time(): return []
     try: return [x for x in samba_models() if not BADM.search(x)]
     except Exception: return []
