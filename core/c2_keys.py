@@ -1,4 +1,4 @@
-import os, json, time, glob, pathlib, datetime, zoneinfo, inspect, threading, uuid, base64, smtplib, urllib.parse
+import os, re, json, time, glob, pathlib, datetime, zoneinfo, inspect, threading, uuid, base64, smtplib, urllib.parse
 import requests
 import docx
 from email.mime.text import MIMEText
