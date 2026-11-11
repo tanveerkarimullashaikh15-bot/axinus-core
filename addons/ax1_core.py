@@ -155,12 +155,39 @@ def brain_step(msgs, tl, first):
     USAGE["groq_calls"] += 1
     return m
 
+_CORE_T = {"get_datetime", "phone_do", "recall_facts", "remember_fact", "tavily_live_search"}
+_GRP = [
+ (r"task|reminder|alarm|yaad|remind|todo|briefing|schedule", ["add_task", "list_tasks", "complete_task", "delete_task", "daily_briefing"]),
+ (r"note|likh|save|memo", ["save_smart_note", "read_note", "list_notes"]),
+ (r"mail|email|contact|whatsapp|message|msg|number|send", ["send_corporate_email", "manage_contact", "send_whatsapp"]),
+ (r"pdf|report|document|\bdoc\b|docx", ["make_pdf", "make_rich_pdf", "image_report", "read_doc", "analyze_pdf"]),
+ (r"merge|split|watermark|table|pdf text|pdf to image", ["pdf_merge", "pdf_split", "pdf_watermark", "pdf_tables", "pdf_text", "pdf_to_images"]),
+ (r"image|photo|pic|picture|video|screenshot|dekho|poster|generate|banao|uploaded file", ["analyze_image", "analyze_video", "generate_image", "analyze_pdf", "image_report", "read_doc", "read_csv"]),
+ (r"code|python|script|program|function|bug|debug|calculate|run |algorithm", ["run_code", "qwen_vibe_coder", "sambanova_heavy_reasoning"]),
+ (r"reason|solve|math|plan|strategy|analy|compare|explain|why|kyu", ["sambanova_heavy_reasoning", "run_code"]),
+ (r"search|news|khabar|weather|mausam|price|rate|latest|web|http|www|gold|score", ["tavily_live_search", "get_news", "read_webpage", "state_info"]),
+ (r"youtube|song|gaana|gana", ["youtube_search"]),
+ (r"csv|excel|sheet|drive|file", ["read_csv", "search_drive", "read_doc"]),
+ (r"quiz|mcq|test me", ["make_quiz"]),
+ (r"diagram|flowchart|chart|graph|architecture", ["make_diagram", "make_rich_pdf"]),
+ (r"state|map|india|population|rajya|maharashtra", ["state_info", "get_news"]),
+ (r"open|kholo|call|phone|app|scroll|type|click|instagram|chrome|swipe|split", ["phone_control", "phone_stop", "phone_do", "send_whatsapp"]),
+]
+def pick_tools(task, tl):
+    t = str(task).lower(); names = set(_CORE_T); hit = False
+    for pat, ns_ in _GRP:
+        if re.search(pat, t): names.update(ns_); hit = True
+    if not hit: names.update(["phone_control", "add_task", "list_tasks", "save_smart_note", "get_news"])
+    sub = [x for x in tl if x["function"]["name"] in names]
+    return sub if len(sub) >= 3 else tl
+
 def brain_loop(task):
     mem = globals().get("facts_text", lambda: "")()
     up = _recent_img() or (LASTUP.get("path", "") if time.time() - LASTUP.get("t", 0) < 7200 else "")
     sys_p = _AX_SYS0 + DELEG + ("\nMEMORY FACTS:\n" + mem if mem else "") + ("\nLAST UPLOADED FILE (use when user says this file/image): " + up if up else "") + "\nCURRENT TIME (IST): " + get_datetime()
     msgs = [{"role": "system", "content": sys_p}] + HISTORY[-10:] + [{"role": "user", "content": task}]
-    tl = _tl(BRAIN_TOOLS)
+    tl = pick_tools(task, _tl(BRAIN_TOOLS))
+    JOB["ntools"] = len(tl)
     final = ""
     for step in range(8):
         m = brain_step(msgs, tl, step == 0)

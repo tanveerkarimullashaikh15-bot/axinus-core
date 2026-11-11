@@ -7,16 +7,19 @@ METER = globals().get("METER") or {"day": "", "m": {}}
 SAMBA_DEAD = globals().get("SAMBA_DEAD") or [0]
 GEM_URL = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
 SAMBA_URL = "https://api.sambanova.ai/v1/chat/completions"
+CER_URL = "https://api.cerebras.ai/v1/chat/completions"
+CEREBRAS_KEY = globals().get("CEREBRAS_KEY") or sec("CEREBRAS_API_KEY", "CEREBRAS")
+LIMITS = {"groq": 200000, "cerebras": 1000000}
 BADM = re.compile(r"whisper|guard|tts|orpheus|embed|safeguard|rerank|allam|prompt", re.I)
 GROQ_DAILY = 200000
 ROLES = {
-    "brain":    [("groq", r"gpt-oss-120b"), ("groq", r"qwen"), ("gemini", r"lite"), ("gemini", r"^(?!.*lite).*flash"), ("groq", r"gpt-oss-20b")],
-    "coder":    [("groq", r"qwen"), ("groq", r"gpt-oss-120b"), ("gemini", r"^(?!.*lite).*flash"), ("gemini", r"lite")],
-    "reasoner": [("groq", r"gpt-oss-120b"), ("gemini", r"^(?!.*lite).*flash"), ("groq", r"qwen")],
-    "phone":    [("groq", r"gpt-oss-20b"), ("groq", r"qwen"), ("gemini", r"lite"), ("groq", r"gpt-oss-120b")],
-    "designer": [("gemini", r"lite"), ("groq", r"gpt-oss-20b"), ("groq", r"qwen"), ("gemini", r"^(?!.*lite).*flash")],
-    "writer":   [("gemini", r"^(?!.*lite).*flash"), ("groq", r"gpt-oss-120b"), ("gemini", r"lite"), ("groq", r"qwen")],
-    "fast":     [("groq", r"gpt-oss-20b"), ("gemini", r"lite"), ("groq", r"qwen")],
+    "brain":    [("cerebras", r"gpt-oss-120b"), ("groq", r"gpt-oss-120b"), ("cerebras", r"qwen.*235"), ("groq", r"qwen"), ("gemini", r"lite"), ("gemini", r"^(?!.*lite).*flash"), ("groq", r"gpt-oss-20b")],
+    "coder":    [("groq", r"qwen"), ("cerebras", r"qwen.*235"), ("cerebras", r"gpt-oss-120b"), ("groq", r"gpt-oss-120b"), ("gemini", r"^(?!.*lite).*flash"), ("gemini", r"lite")],
+    "reasoner": [("cerebras", r"gpt-oss-120b"), ("cerebras", r"qwen.*235"), ("groq", r"gpt-oss-120b"), ("gemini", r"^(?!.*lite).*flash"), ("groq", r"qwen")],
+    "phone":    [("groq", r"gpt-oss-20b"), ("cerebras", r"llama.*8b|llama3.1"), ("groq", r"qwen"), ("gemini", r"lite"), ("cerebras", r"gpt-oss-120b"), ("groq", r"gpt-oss-120b")],
+    "designer": [("gemini", r"lite"), ("groq", r"gpt-oss-20b"), ("cerebras", r"gpt-oss-120b"), ("groq", r"qwen"), ("gemini", r"^(?!.*lite).*flash")],
+    "writer":   [("gemini", r"^(?!.*lite).*flash"), ("cerebras", r"gpt-oss-120b"), ("groq", r"gpt-oss-120b"), ("gemini", r"lite"), ("groq", r"qwen")],
+    "fast":     [("groq", r"gpt-oss-20b"), ("cerebras", r"llama.*8b|llama3.1"), ("gemini", r"lite"), ("groq", r"qwen")],
 }
 IST0 = zoneinfo.ZoneInfo("Asia/Kolkata")
 
@@ -27,6 +30,15 @@ def _groq_ids():
         if ids: R0["gids"] = ids; R0["gt"] = time.time(); return ids
     except Exception: pass
     return R0["gids"] or ["openai/gpt-oss-120b", "openai/gpt-oss-20b", "qwen/qwen3.8-27b"]
+def _cer_ids():
+    if not CEREBRAS_KEY: return []
+    if R0.get("cids") and time.time() - R0.get("ct", 0) < 600: return R0["cids"]
+    try:
+        r = requests.get("https://api.cerebras.ai/v1/models", headers={"Authorization": "Bearer " + CEREBRAS_KEY}, timeout=10)
+        ids = [m["id"] for m in r.json().get("data", []) if not BADM.search(m["id"])]
+        if ids: R0["cids"] = ids; R0["ct"] = time.time(); return ids
+    except Exception: pass
+    return R0.get("cids") or ["gpt-oss-120b", "qwen-3-235b-a22b-instruct-2507", "llama3.1-8b"]
 def _gem_ids(): return [m for m in GEMINI_MODELS if m not in DEAD]
 def _samba_ids():
     return []  # SambaNova removed (no free credits)
@@ -35,7 +47,7 @@ def _samba_ids():
     except Exception: return []
 def label(c): return c[0] + ":" + c[1]
 def cands(role):
-    src = {"groq": _groq_ids(), "gemini": _gem_ids(), "samba": _samba_ids()}; out = []
+    src = {"groq": _groq_ids(), "gemini": _gem_ids(), "samba": _samba_ids(), "cerebras": _cer_ids()}; out = []
     for prov, pat in ROLES[role]:
         for i in src[prov]:
             if re.search(pat, i, re.I) and (prov, i) not in out: out.append((prov, i))
@@ -68,6 +80,7 @@ def _call(c, msgs, tools, role, mt, timeout):
         u = getattr(r, "usage", None)
         return r.choices[0].message, (getattr(u, "prompt_tokens", 0) or 0, getattr(u, "completion_tokens", 0) or 0)
     if prov == "gemini": return _http(GEM_URL, API_KEY, model, msgs, tools, mt, timeout)
+    if prov == "cerebras": return _http(CER_URL, CEREBRAS_KEY, model, msgs, tools, mt, timeout)
     return _http(SAMBA_URL, SAMBA_KEY, model, msgs, tools, mt, timeout)
 
 def _classify(e):
@@ -96,7 +109,7 @@ def meter_data():
     rows = []
     for k, v in sorted(METER["m"].items()):
         used = v["tin"] + v["tout"]
-        rows.append({"model": k, "calls": v["calls"], "tokens": used, "err": v["err"], "pct": round(100 * used / GROQ_DAILY) if k.startswith("groq:") else None})
+        rows.append({"model": k, "calls": v["calls"], "tokens": used, "err": v["err"], "pct": round(100 * used / LIMITS[k.split(":")[0]]) if k.split(":")[0] in LIMITS else None})
     dead = [{"model": label(c), "left_s": int(t - time.time())} for c, t in R0["dead"].items() if t > time.time()]
     return {"day": METER["day"], "rows": rows, "dead": dead}
 
