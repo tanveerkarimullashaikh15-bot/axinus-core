@@ -105,13 +105,25 @@ def _meter(c, tin=0, tout=0, err=False, msg=""):
     if R0["n"] % 15 == 0:
         try: pathlib.Path(MEM_DIR + "/meter.json").write_text(json.dumps(METER))
         except Exception: pass
+GEM_RPD = {"lite": 500}
 def meter_data():
+    roles = {}
+    for r in ROLES:
+        for c in cands(r): roles.setdefault(label(c), set()).add(r)
+    for g in GEMINI_MODELS: roles.setdefault("gemini:" + g, set()).add("vision")
+    for g in GEMINI_MODELS: roles["gemini:" + g].add("vision")
+    now = time.time(); dead = {label(c): int(t - now) for c, t in R0["dead"].items() if t > now}
     rows = []
-    for k, v in sorted(METER["m"].items()):
-        used = v["tin"] + v["tout"]
-        rows.append({"model": k, "calls": v["calls"], "tokens": used, "err": v["err"], "last": v.get("last", ""), "pct": round(100 * used / LIMITS[k.split(":")[0]]) if k.split(":")[0] in LIMITS else None})
-    dead = [{"model": label(c), "left_s": int(t - time.time())} for c, t in R0["dead"].items() if t > time.time()]
-    return {"day": METER["day"], "rows": rows, "dead": dead}
+    for k in sorted(set(roles) | set(METER["m"]), key=lambda x: (x.split(":")[0], x)):
+        v = METER["m"].get(k, {"calls": 0, "tin": 0, "tout": 0, "err": 0}); used = v["tin"] + v["tout"]; prov = k.split(":")[0]
+        lim = LIMITS.get(prov); lt = ""
+        if lim: lt = "~%dK tok/din" % (lim // 1000)
+        elif prov == "gemini":
+            rpd = next((n for key, n in GEM_RPD.items() if key in k), None)
+            lt = "~%d req/din" % rpd if rpd else "limit alag (pata nahi)"
+        pct = round(100 * used / lim) if lim else (round(100 * v["calls"] / rpd) if prov == "gemini" and rpd else None)
+        rows.append({"model": k, "roles": sorted(roles.get(k, [])), "calls": v["calls"], "tokens": used, "err": v["err"], "last": v.get("last", ""), "pct": pct, "limit": lt, "dead_s": dead.get(k, 0)})
+    return {"day": METER["day"] or datetime.datetime.now(IST0).strftime("%Y-%m-%d"), "rows": rows}
 
 def _hedged(role, cs, msgs, tools, mt, timeout):
     k = R0["rr"].get(role, 0) % len(cs); R0["rr"][role] = k + 1; order = cs[k:] + cs[:k]
