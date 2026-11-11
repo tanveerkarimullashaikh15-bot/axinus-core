@@ -130,8 +130,26 @@ if(sc.turnComplete){cur.in=null;cur.out=null;}
 if(m.toolCall&&m.toolCall.functionCalls)for(const fc of m.toolCall.functionCalls)runTool(fc);
 }
 
+let PEND_F=null;
+function fchipShow(){
+let c=$('fchip');
+if(!c){c=document.createElement('div');c.id='fchip';c.style.cssText='display:flex;align-items:center;gap:8px;margin:6px 0;padding:6px 8px;border:1px solid #2b4a5c;border-radius:10px;background:#0a1621;color:#cfe8f3;font:12px system-ui';const inp=$('tx').parentNode;inp.parentNode.insertBefore(c,inp);}
+if(!PEND_F){c.style.display='none';return;}
+c.style.display='flex';c.innerHTML='';
+if(PEND_F.thumb){const im=document.createElement('img');im.src=PEND_F.thumb;im.style.cssText='width:44px;height:44px;object-fit:cover;border-radius:8px';c.appendChild(im);}
+const t=document.createElement('span');t.style.cssText='flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';t.textContent='📎 '+PEND_F.name+' - neeche likho kya karna hai, phir Send';c.appendChild(t);
+const x=document.createElement('button');x.textContent='✕';x.style.cssText='border:0;background:transparent;color:#9fc3d3;font-size:16px;cursor:pointer';x.onclick=()=>{PEND_F=null;fchipShow();};c.appendChild(x);
+$('tx').placeholder=PEND_F?'Is file ke baare me kya poochna hai?':'Type instruction or command...';
+if(!PEND_F)$('tx').placeholder='Type instruction or command...';
+}
 async function handleChatInput(){
 const v=$('tx').value.trim();
+if(PEND_F){
+const f=PEND_F;PEND_F=null;fchipShow();$('tx').value='';
+logLine('Tum (chat)','📎 '+f.name+(v?' - '+v:''));
+await executeTask('Uploaded file path: '+f.path+'. '+(v||'Is file ko dekho aur batao isme kya hai.'));
+return;
+}
 if(!v)return;
 logLine('Tum (chat)',v);
 $('tx').value='';
@@ -157,11 +175,12 @@ const r=await inv('save_chunk',[uid,f.name,i,total,b64(buf)]);
 if(r.error||!r.ok){logLine('❌','Upload fail: '+(r.error||r.msg||''));st('upload fail');$('fi').value='';return;}
 if(r.done)path=r.path;
 }
-logLine('📎','Upload ho gaya: '+f.name);
-const q=$('tx').value.trim();
-$('tx').value='';
+logLine('📎','Attach ho gaya: '+f.name);
+PEND_F={path:path,name:f.name,thumb:f.type.startsWith('image/')?URL.createObjectURL(f):''};
 $('fi').value='';
-await executeTask('Uploaded file path: '+path+'. '+(q||'Is file ko dekho aur batao isme kya hai.'));
+st('ready');
+fchipShow();
+$('tx').focus();
 };
 
 $('bgo').onclick=async()=>{
