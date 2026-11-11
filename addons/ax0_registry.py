@@ -95,11 +95,11 @@ def _classify(e):
     if re.search(r"tool_use_failed|failed to call|invalid.*tool|\b50[0234]\b|time.?d? ?out|connection", s, re.I): return "retry"
     return 60
 
-def _meter(c, tin=0, tout=0, err=False):
+def _meter(c, tin=0, tout=0, err=False, msg=""):
     d = datetime.datetime.now(IST0).strftime("%Y-%m-%d")
     if METER["day"] != d: METER["day"] = d; METER["m"] = {}
     x = METER["m"].setdefault(label(c), {"calls": 0, "tin": 0, "tout": 0, "err": 0})
-    if err: x["err"] += 1
+    if err: x["err"] += 1; x["last"] = re.sub(r"(key|token)=[\w-]+", "***", str(msg))[:110]
     else: x["calls"] += 1; x["tin"] += int(tin); x["tout"] += int(tout)
     R0["n"] += 1
     if R0["n"] % 15 == 0:
@@ -109,7 +109,7 @@ def meter_data():
     rows = []
     for k, v in sorted(METER["m"].items()):
         used = v["tin"] + v["tout"]
-        rows.append({"model": k, "calls": v["calls"], "tokens": used, "err": v["err"], "pct": round(100 * used / LIMITS[k.split(":")[0]]) if k.split(":")[0] in LIMITS else None})
+        rows.append({"model": k, "calls": v["calls"], "tokens": used, "err": v["err"], "last": v.get("last", ""), "pct": round(100 * used / LIMITS[k.split(":")[0]]) if k.split(":")[0] in LIMITS else None})
     dead = [{"model": label(c), "left_s": int(t - time.time())} for c, t in R0["dead"].items() if t > time.time()]
     return {"day": METER["day"], "rows": rows, "dead": dead}
 
@@ -130,7 +130,7 @@ def _hedged(role, cs, msgs, tools, mt, timeout):
             try:
                 m, (a, b) = f.result(); ex.shutdown(wait=False); _meter(c, a, b); R0["last"][role] = label(c); return m, label(c)
             except Exception as e:
-                last = e; h = _classify(e); _meter(c, err=True); R0["dead"][c] = time.time() + (30 if h == "retry" else h); launch()
+                last = e; h = _classify(e); _meter(c, err=True, msg=e); R0["dead"][c] = time.time() + (30 if h == "retry" else h); launch()
     ex.shutdown(wait=False); raise RuntimeError(str(last)[:160] if last else "timeout")
 
 def chat(role, msgs, tools=None, mt=None, timeout=60, hedge=False):
@@ -144,7 +144,7 @@ def chat(role, msgs, tools=None, mt=None, timeout=60, hedge=False):
             try:
                 m, (a, b) = _call(c, msgs, tools, role, mt, timeout); _meter(c, a, b); R0["last"][role] = label(c); return m, label(c)
             except Exception as e:
-                last = e; h = _classify(e); _meter(c, err=True)
+                last = e; h = _classify(e); _meter(c, err=True, msg=e)
                 if h == "retry" and attempt == 0: time.sleep(1.5); continue
                 R0["dead"][c] = time.time() + (30 if h == "retry" else h); break
     raise RuntimeError("Saare models busy/quota khatam (%s). Last: %s" % (role, str(last)[:140]))
