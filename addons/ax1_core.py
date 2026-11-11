@@ -132,6 +132,7 @@ ORCHESTRATION RULES (you are the central orchestrator. Use the workers, do not d
 - Multi-step jobs: call tools one after another and pass earlier results into later calls. If a step needs another worker (research before a PDF, reasoner before a diagram), call it too.
 - EXCEPTION to brevity: when a tool returns code, a list, a table or a link, show it in full after one short sentence (code inside ``` blocks). Brevity applies to your own commentary only.
 """
+SYS_HOOKS = []
 IMG_EXT = (".jpg", ".jpeg", ".png", ".webp")
 
 def _recent_img():
@@ -184,7 +185,7 @@ def pick_tools(task, tl):
 def brain_loop(task):
     mem = globals().get("facts_text", lambda: "")()
     up = _recent_img() or (LASTUP.get("path", "") if time.time() - LASTUP.get("t", 0) < 7200 else "")
-    sys_p = _AX_SYS0 + DELEG + ("\nMEMORY FACTS:\n" + mem if mem else "") + ("\nLAST UPLOADED FILE (use when user says this file/image): " + up if up else "") + "\nCURRENT TIME (IST): " + get_datetime()
+    sys_p = _AX_SYS0 + DELEG + ("\nMEMORY FACTS:\n" + mem if mem else "") + ("\nLAST UPLOADED FILE (use when user says this file/image): " + up if up else "") + "\nCURRENT TIME (IST): " + get_datetime() + "".join(f(task) for f in SYS_HOOKS)
     msgs = [{"role": "system", "content": sys_p}] + HISTORY[-10:] + [{"role": "user", "content": task}]
     tl = pick_tools(task, _tl(BRAIN_TOOLS))
     JOB["ntools"] = len(tl)

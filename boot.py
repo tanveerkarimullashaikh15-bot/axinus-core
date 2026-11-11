@@ -2,7 +2,7 @@
 import os, glob, traceback, subprocess
 R = os.path.dirname(os.path.abspath(__file__)) if "__file__" in globals() else "/content/axc"
 if "AXC_ROOT" in globals(): R = AXC_ROOT
-os.system("pip install -q reportlab pillow matplotlib pypdf jinja2 weasyprint pdfplumber plotly >/dev/null 2>&1")
+os.system("pip install -q phonenumbers reportlab pillow matplotlib pypdf jinja2 weasyprint pdfplumber plotly >/dev/null 2>&1")
 os.system("which dot >/dev/null 2>&1 || (apt-get -qq update >/dev/null 2>&1; apt-get -qq install -y graphviz >/dev/null 2>&1)")
 def _x(f):
     try: exec(compile(open(f).read(), f, "exec"), globals())

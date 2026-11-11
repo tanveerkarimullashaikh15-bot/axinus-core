@@ -112,6 +112,7 @@ def meter_data():
         for c in cands(r): roles.setdefault(label(c), set()).add(r)
     for g in GEMINI_MODELS: roles.setdefault("gemini:" + g, set()).add("vision")
     for g in GEMINI_MODELS: roles["gemini:" + g].add("vision")
+    for k in globals().get("VIS_EXTRA", []): roles.setdefault(k, set()).add("vision")
     now = time.time(); dead = {label(c): int(t - now) for c, t in R0["dead"].items() if t > now}
     rows = []
     for k in sorted(set(roles) | set(METER["m"]), key=lambda x: (x.split(":")[0], x)):
@@ -121,6 +122,7 @@ def meter_data():
         elif prov == "gemini":
             rpd = next((n for key, n in GEM_RPD.items() if key in k), None)
             lt = "~%d req/din" % rpd if rpd else "limit alag (pata nahi)"
+        if prov in globals().get("EXTRA_LIM", {}): lt = EXTRA_LIM[prov]
         pct = round(100 * used / lim) if lim else (round(100 * v["calls"] / rpd) if prov == "gemini" and rpd else None)
         rows.append({"model": k, "roles": sorted(roles.get(k, [])), "calls": v["calls"], "tokens": used, "err": v["err"], "last": v.get("last", ""), "pct": pct, "limit": lt, "dead_s": dead.get(k, 0)})
     return {"day": METER["day"] or datetime.datetime.now(IST0).strftime("%Y-%m-%d"), "rows": rows}

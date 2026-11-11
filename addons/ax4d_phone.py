@@ -34,7 +34,9 @@ def _submit(goal, recipe=None):
         c["ev"].wait(110); return c.get("res") or "Error: pehle wale kaam ka result nahi aaya."
     it = {"id": uuid.uuid4().hex[:6], "goal": goal[:300], "recipe": recipe, "ev": threading.Event(), "res": ""}
     PHONE["stop"] = False; PHONE["items"][it["id"]] = it; PHONE["cur"] = it; PHONE["q"].append(it)
+    PHONE["lastdata"] = ""
     if not it["ev"].wait(110): it["ev"].set(); PHONE["q"][:] = [x for x in PHONE["q"] if x is not it]; it["res"] = "Error: phone agent ne 110 second me jawab nahi diya. Kaam poora hua ya nahi, pakka nahi."
+    PHONE["lastdata"] = it.get("data", "")
     return it["res"] or "Error: koi result nahi aaya."
 def phone_control(goal: str):
     return _submit(goal)
@@ -52,9 +54,10 @@ def phone_poll():
         it = PHONE["q"].pop(0); PHONE["stop"] = False
         return J({"id": it["id"], "goal": it["goal"], "recipe": it.get("recipe")})
     return J({})
-def phone_done(pid, msg):
+def phone_done(pid, msg, data=""):
     it = PHONE["items"].get(str(pid))
     if it and not it["ev"].is_set():
+        it["data"] = str(data or "")[:600000]
         m = str(msg)[:250]; it["res"] = ("Done: " if not re.match(r"(?i)(sir,? )?(ruk|nahi|server|payment|planner|error)", m) else "Not completed: ") + m; it["ev"].set()
     try: _alert("phone", {"id": str(pid), "title": "Phone agent"}, str(msg)[:200])
     except Exception: pass

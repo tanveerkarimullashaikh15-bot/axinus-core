@@ -35,6 +35,12 @@ def selftest(deep=False):
         out.append(_t("Brain LLM answers", lambda: (lambda r: ("ok" in r[0].lower(), r[1]))(llm("brain", "Reply with exactly: ok", "ping", mt=20))))
         out.append(_t("Coder writes code", lambda: (lambda r: ("def " in r[0] or "print" in r[0], r[1]))(llm("coder", "Return only python code.", "function add(a,b)", mt=120))))
         out.append(_t("Brain uses tools (time)", lambda: (lambda r: (bool(re.search(r"\d{1,2}[:.]\d{2}|AM|PM|baj", r)), r[:60]))(_ASK_CORE("Abhi time kya hai? get_datetime tool use karo, short batao"))))
+    def _les():
+        teach_lesson("zz selftest theorem", "step one compute resistance; step two apply source"); ok = "zz selftest" in lessons_for("zz selftest theorem kaise"); forget_lesson("zz selftest"); return ok, "teach -> recall -> forget"
+    out.append(_t("Lessons memory", _les))
+    out.append(_t("Number check (offline part)", lambda: (lambda i: (i["num"] == "+919876543210" and "140" in " ".join(_local("1409876543")["flags"]), "region=%s carrier=%s" % (i.get("region", "?"), i.get("carrier", "?"))))(_local("98765 43210"))))
+    out.append({"name": "Vision backups", "ok": bool(VIS_EXTRA), "detail": ", ".join(VIS_EXTRA) or "Cohere/Cloudflare key nahi (sirf Gemini)", "ms": 0})
+    out.append({"name": "News memory", "ok": True, "detail": "%d din saved | last %s" % (len(_nm()), NM.get("last") or "-"), "ms": 0})
     p = sum(1 for x in out if x["ok"]); n = len(out)
     res = {"checks": out, "pass": p, "total": n, "pct": round(100 * p / n), "t": time.strftime("%H:%M:%S"), "deep": bool(deep)}
     ST["last"] = res; return J(res)
@@ -45,7 +51,7 @@ TABS.push(['meter','Tokens'],['self','Self-test'],['phone','Phone setup']);
 const bar=(p,c)=>'<div style="height:6px;background:#0a1621;border-radius:4px;overflow:hidden;margin:3px 0 7px"><div style="height:6px;width:'+Math.min(100,p||0)+'%;background:'+c+'"></div></div>';
 TAB.meter=async function(){$('sbody').innerHTML='<div class="emp">Loading...</div>';const r=await api('meter');if(!r||r.error){$('sbody').innerHTML='<div class="emp">Meter nahi mila</div>';return;}
 const RN={brain:'brain',coder:'coder',reasoner:'reasoner',phone:'phone',designer:'diagram',writer:'writer',fast:'fast',vision:'VISION'};let last='';
-$('sbody').innerHTML='<div class="g">AAJ ('+E(r.day)+') - har model ka alag limit</div>'+(r.rows||[]).map(x=>{const p=x.model.split(':')[0];let h='';if(p!==last){last=p;h='<div class="g" style="margin-top:10px">'+({groq:'GROQ',gemini:'GEMINI (vision yahi)',cerebras:'CEREBRAS',samba:'SAMBANOVA'}[p]||p.toUpperCase())+'</div>';}
+$('sbody').innerHTML='<div class="g">AAJ ('+E(r.day)+') - har model ka alag limit</div>'+(r.rows||[]).map(x=>{const p=x.model.split(':')[0];let h='';if(p!==last){last=p;h='<div class="g" style="margin-top:10px">'+({groq:'GROQ',gemini:'GEMINI (vision yahi)',cerebras:'CEREBRAS',samba:'SAMBANOVA',cohere:'COHERE (vision backup)',cloudflare:'CLOUDFLARE (vision backup)'}[p]||p.toUpperCase())+'</div>';}
 const nm=x.model.slice(p.length+1);const tags=(x.roles||[]).map(a=>'<span style="font-size:10px;border:1px solid #2a4a5c;border-radius:8px;padding:1px 6px;margin-right:3px;'+(a==='vision'?'color:#c58bff;border-color:#7a4aa8':'color:#7fd3e8')+'">'+(RN[a]||a)+'</span>').join('');
 const st=x.dead_s>0?'<span class="bad"> · band '+Math.ceil(x.dead_s/60)+' min</span>':'';
 return h+'<div class="row"><span>'+E(nm)+st+'<br>'+tags+'</span><span style="text-align:right;font-size:12px">'+x.calls+' calls'+(x.tokens?' · '+x.tokens+' tok':'')+(x.err?' · <span class="bad">'+x.err+' err</span>':'')+'<br><span style="opacity:.7">'+E(x.limit||'')+(x.pct!=null?' · '+x.pct+'%':'')+'</span></span></div>'+(x.pct!=null?bar(x.pct,x.pct>80?'#ff5c5c':x.pct>50?'#ffb347':'#3ddc97'):'')+(x.last?'<div style="font-size:11px;opacity:.65;margin:-4px 0 6px">last err: '+E(x.last)+'</div>':'');}).join('');};
