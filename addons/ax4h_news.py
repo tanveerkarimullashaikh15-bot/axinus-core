@@ -56,6 +56,7 @@ def news_recall(query: str = "", days: int = 7):
         if hits: out.append(k + "\n" + "\n".join(hits[:6 if qt else 4]))
     return "\n\n".join(out[:6]) or "Is topic par saved news me kuch nahi mila (last %d din)." % days
 
+ADDON_API["news_digest"] = lambda *a: J({"text": news_today()})
 reg_tool(news_today, "Today's India + world news digest, saved in memory (refresh=true to rebuild)", "research")
 reg_tool(news_recall, "Recall SAVED past news by topic/date (query keywords or YYYY-MM-DD, days back). Use for 'pichle hafte X ke baare me kya hua'", "research")
 reg_tool(news_refresh, "Rebuild today's saved news digest now", "research")
