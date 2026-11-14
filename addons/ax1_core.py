@@ -125,7 +125,7 @@ ORCHESTRATION RULES (you are the central orchestrator. Use the workers, do not d
 - Maths, circuits, derivations, heavy logic -> call sambanova_heavy_reasoning.
 - Images, PDFs, videos -> analyze_image / analyze_pdf / analyze_video.
 - Image + PDF report + save to Drive -> call image_report once (it coordinates Vision, Research, Reasoner, Coder, Utils and saving).
-- A PDF or report on a topic -> make_rich_pdf. Only a diagram, flowchart or chart -> make_diagram.
+- A DETAILED / long / multi-page PDF, full chapter, complete notes, study material, syllabus coverage, or any request that says N pages -> make_long_pdf (pass request = the user's COMPLETE original message and pages = e.g. 10-15). A short one-page PDF -> make_rich_pdf. Only a diagram, flowchart or chart -> make_diagram.
 - Live info -> tavily_live_search. News -> get_news. Daily briefing -> daily_briefing.
 - Tasks and reminders -> add_task (when = YYYY-MM-DD HH:MM in IST), list_tasks, complete_task, delete_task.
 - Facts the user wants remembered -> remember_fact. Recall -> recall_facts.
@@ -161,7 +161,7 @@ _GRP = [
  (r"task|reminder|alarm|yaad|remind|todo|briefing|schedule", ["add_task", "list_tasks", "complete_task", "delete_task", "daily_briefing"]),
  (r"note|likh|save|memo", ["save_smart_note", "read_note", "list_notes"]),
  (r"mail|email|contact|whatsapp|message|msg|number|send", ["send_corporate_email", "manage_contact", "send_whatsapp"]),
- (r"pdf|report|document|\bdoc\b|docx", ["make_pdf", "make_rich_pdf", "image_report", "read_doc", "analyze_pdf"]),
+ (r"pdf|report|document|\bdoc\b|docx|chapter|notes|syllabus|study material", ["make_pdf", "make_long_pdf", "make_rich_pdf", "image_report", "read_doc", "analyze_pdf"]),
  (r"merge|split|watermark|table|pdf text|pdf to image", ["pdf_merge", "pdf_split", "pdf_watermark", "pdf_tables", "pdf_text", "pdf_to_images"]),
  (r"image|photo|pic|picture|video|screenshot|dekho|poster|generate|banao|uploaded file", ["analyze_image", "analyze_video", "generate_image", "analyze_pdf", "image_report", "read_doc", "read_csv"]),
  (r"code|python|script|program|function|bug|debug|calculate|run |algorithm", ["run_code", "qwen_vibe_coder", "sambanova_heavy_reasoning"]),
@@ -170,7 +170,7 @@ _GRP = [
  (r"youtube|song|gaana|gana", ["youtube_search"]),
  (r"csv|excel|sheet|drive|file", ["read_csv", "search_drive", "read_doc"]),
  (r"quiz|mcq|test me", ["make_quiz"]),
- (r"diagram|flowchart|chart|graph|architecture", ["make_diagram", "make_rich_pdf"]),
+ (r"diagram|flowchart|chart|graph|architecture", ["make_diagram", "make_rich_pdf", "make_long_pdf"]),
  (r"state|map|india|population|rajya|maharashtra", ["state_info", "get_news"]),
  (r"open|kholo|call|phone|app|scroll|type|click|instagram|chrome|swipe|split", ["phone_control", "phone_stop", "phone_do", "send_whatsapp"]),
 ]
@@ -214,8 +214,9 @@ def footer():
     except Exception:
         return ""
 
+CUR_TASK = globals().get("CUR_TASK") or [""]
 def ask(task):
-    JOB["workers"] = []; JOB["models"] = {}; TRACE.clear()
+    CUR_TASK[0] = str(task); JOB["workers"] = []; JOB["models"] = {}; TRACE.clear()
     emit("brain", "mark", "TASK RECEIVED: " + str(task)[:70])
     ok = True; final = ""; base_used = False
     try:

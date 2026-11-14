@@ -91,13 +91,13 @@ st('Groq Brain running...');logLine('⚙️ Task',req);
 let out='';
 try{
 const j=await inv('start_job',[req]);
-for(let i=0;i<800;i++){
-await new Promise(r=>setTimeout(r,150));
+for(let i=0;i<4400;i++){
+await new Promise(r=>setTimeout(r,i<400?150:1000));
 const r=await inv('poll_job',[j.id]);
 if(r.status==='approval'){showAp(r.msg);}
 else{hideAp();if(r.status==='done'){out=r.text;break;}}
 }
-if(!out)out='Timeout: result abhi nahi aaya, kaam chal raha ho sakta hai.';
+if(!out)out='Timeout: bahut lamba kaam hai, result abhi nahi aaya, kaam chal raha ho sakta hai.';
 }catch(e){out='Tool error: '+e;}
 logLine('💡 Result',String(out));
 st('live - ready Sir!');

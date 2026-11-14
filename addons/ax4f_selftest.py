@@ -39,6 +39,9 @@ def selftest(deep=False):
         teach_lesson("zz selftest theorem", "step one compute resistance; step two apply source"); ok = "zz selftest" in lessons_for("zz selftest theorem kaise"); forget_lesson("zz selftest"); return ok, "teach -> recall -> forget"
     out.append(_t("Lessons memory", _les))
     out.append(_t("Number check (offline part)", lambda: (lambda i: (i["num"] == "+919876543210" and "140" in " ".join(_local("1409876543")["flags"]), "region=%s carrier=%s" % (i.get("region", "?"), i.get("carrier", "?"))))(_local("98765 43210"))))
+    def _ld():
+        n = _numericals(lambda nm: "/tmp/_st_" + nm + ".png"); h = _math_html(r"V = IR \\quad \\frac{a}{b}", True); return len(n) == 10 and "<img" in h, "circuit solver cross-checks pass (%d topics), equations render" % len(n)
+    out.append(_t("Long-PDF engine (circuits + math)", _ld))
     out.append({"name": "Vision backups", "ok": bool(VIS_EXTRA), "detail": ", ".join(VIS_EXTRA) or "Cohere/Cloudflare key nahi (sirf Gemini)", "ms": 0})
     out.append({"name": "News memory", "ok": True, "detail": "%d din saved | last %s" % (len(_nm()), NM.get("last") or "-"), "ms": 0})
     p = sum(1 for x in out if x["ok"]); n = len(out)
