@@ -29,10 +29,13 @@ def phone_step(goal, screen, hist):
 PHONE.setdefault("seen", 0); PHONE.setdefault("items", {}); PHONE["cur"] = None
 def _submit(goal, recipe=None):
     if time.time() - PHONE["seen"] > 25: return "Error: phone agent online nahi hai. Android app me Accessibility ON karo aur app me sahi URL/PIN rakho. Kaam nahi hua."
+    key = (str(goal)[:300] + json.dumps(recipe, sort_keys=True, default=str)) if recipe else str(goal)[:300]
+    ld = PHONE.get("lastdone")
+    if ld and ld[0] == key and time.time() - ld[1] < 20 and recipe and recipe.get("k") in ("open_app", "youtube_search", "web_search"): return ld[2] + " (ye abhi hua hai, dobara nahi chalaya)"
     c = PHONE.get("cur")
     if c and not c["ev"].is_set():
         c["ev"].wait(110); return c.get("res") or "Error: pehle wale kaam ka result nahi aaya."
-    it = {"id": uuid.uuid4().hex[:6], "goal": goal[:300], "recipe": recipe, "ev": threading.Event(), "res": ""}
+    it = {"id": uuid.uuid4().hex[:6], "goal": goal[:300], "recipe": recipe, "ev": threading.Event(), "res": "", "key": key}
     PHONE["stop"] = False; PHONE["items"][it["id"]] = it; PHONE["cur"] = it; PHONE["q"].append(it)
     PHONE["lastdata"] = ""
     if not it["ev"].wait(110): it["ev"].set(); PHONE["q"][:] = [x for x in PHONE["q"] if x is not it]; it["res"] = "Error: phone agent ne 110 second me jawab nahi diya. Kaam poora hua ya nahi, pakka nahi."
@@ -58,10 +61,12 @@ def phone_done(pid, msg, data=""):
     it = PHONE["items"].get(str(pid))
     if it and not it["ev"].is_set():
         it["data"] = str(data or "")[:600000]
-        m = str(msg)[:250]; it["res"] = ("Done: " if not re.match(r"(?i)(sir,? )?(ruk|nahi|server|payment|planner|error)", m) else "Not completed: ") + m; it["ev"].set()
-    try: _alert("phone", {"id": str(pid), "title": "Phone agent"}, str(msg)[:200])
-    except Exception: pass
-    return J({"ok": True})
+        m = str(msg)[:250]
+        if re.match(r"(?i)(done|not completed)\b", m): it["res"] = m
+        else: it["res"] = ("Done: " if not re.match(r"(?i)(sir,? )?(ruk|nahi|server|payment|planner|error)", m) else "Not completed: ") + m
+        if it["res"].startswith("Done"): PHONE["lastdone"] = (it.get("key"), time.time(), it["res"])
+        it["ev"].set()
+    return J({"ok": True})   # no alert/beep/voice here: the brain already answers with the tool result
 reg_tool(phone_control, "USE THIS (not youtube_search) whenever the user wants something done INSIDE an app or on the phone screen: search in YouTube/Instagram app, play a short, open settings, scroll, type in an app. Control the user's Android phone (open apps, tap, type, scroll) to do a task via accessibility. Waits and returns the REAL result; report exactly that result to the user, never claim success otherwise. goal = plain instruction. Needs the Android app with Accessibility ON", "phone")
 reg_tool(phone_stop, "Stop the phone agent immediately", "phone")
 if "PHONE CONTROL RULE" not in DELEG:

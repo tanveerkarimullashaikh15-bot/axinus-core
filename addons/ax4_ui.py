@@ -281,7 +281,7 @@ setInterval(pulse,700);
 function beep(){try{const c=new AudioContext(),o=c.createOscillator(),g=c.createGain();o.frequency.value=880;g.gain.value=.15;o.connect(g);g.connect(c.destination);o.start();setTimeout(()=>{o.frequency.value=1175;},180);setTimeout(()=>{o.stop();c.close();},380);}catch(e){}}
 function speak(m){try{const w=window.AXWS&&window.AXWS();if(w&&w.ws&&w.ws.readyState===1&&w.ready){w.ws.send(JSON.stringify({clientContent:{turns:[{role:'user',parts:[{text:'SYSTEM REMINDER. Tell Sir this in one short sentence: '+m}]}],turnComplete:true}}));return;}}catch(e){}
 try{const u=new SpeechSynthesisUtterance('Sir, '+m);u.lang='en-IN';speechSynthesis.speak(u);}catch(e){}}
-function onAlert(a){toast('⏰ '+E(a.text),'',0);beep();try{navigator.vibrate&&navigator.vibrate([200,100,200]);}catch(e){}
+function onAlert(a){if(a.kind==='phone')return;toast('⏰ '+E(a.text),'',0);beep();try{navigator.vibrate&&navigator.vibrate([200,100,200]);}catch(e){}
 try{if(window.Notification&&Notification.permission==='granted')new Notification('AXINUS',{body:a.text});}catch(e){}
 speak(a.text);loadTasks();}
 /* ---------- tasks ---------- */
