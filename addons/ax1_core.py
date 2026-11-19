@@ -156,7 +156,7 @@ def brain_step(msgs, tl, first):
     USAGE["groq_calls"] += 1
     return m
 
-_CORE_T = {"get_datetime", "phone_do", "recall_facts", "remember_fact", "tavily_live_search"}
+_CORE_T = {"get_datetime", "phone_do", "screen_look", "recall_facts", "remember_fact", "tavily_live_search"}
 _GRP = [
  (r"task|reminder|alarm|yaad|remind|todo|briefing|schedule", ["add_task", "list_tasks", "complete_task", "delete_task", "daily_briefing"]),
  (r"note|likh|save|memo", ["save_smart_note", "read_note", "list_notes"]),
@@ -172,6 +172,7 @@ _GRP = [
  (r"quiz|mcq|test me", ["make_quiz"]),
  (r"diagram|flowchart|chart|graph|architecture", ["make_diagram", "make_rich_pdf", "make_long_pdf"]),
  (r"state|map|india|population|rajya|maharashtra", ["state_info", "get_news"]),
+ (r"screen|dikh|dekh|kya chal|on screen|screenshot|tap|click|dabao|button|icon", ["screen_look", "screen_tap", "phone_do"]),
  (r"open|kholo|call|phone|app|scroll|type|click|instagram|chrome|swipe|split", ["phone_control", "phone_stop", "phone_do", "send_whatsapp"]),
 ]
 def pick_tools(task, tl):
