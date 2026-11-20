@@ -77,4 +77,19 @@ for _ in range(45):
         break
     time.sleep(1)
 print("✅ SERVER URL:", URL)
+try:
+    import hashlib, urllib.request
+    _cf = (MEM_DIR if "MEM_DIR" in globals() else "/content") + "/axcode.txt"
+    CODE = sec("AXINUS_CODE") if "sec" in globals() else None
+    if not CODE:
+        try: CODE = open(_cf).read().strip()
+        except Exception: CODE = ""
+    if not CODE:
+        CODE = "axn" + hashlib.sha256(os.urandom(16)).hexdigest()[:16]
+        try: open(_cf, "w").write(CODE)
+        except Exception: pass
+    if URL:
+        urllib.request.urlopen(urllib.request.Request("https://ntfy.sh/" + CODE, data=URL.encode(), headers={"Title": "axinus url"}), timeout=10).read()
+    print("📲 APP CODE (ek baar app me daalo, phir URL auto):", CODE)
+except Exception as _e: print("auto-url publish skipped:", str(_e)[:100])
 print("🔑 PIN:", PIN)
