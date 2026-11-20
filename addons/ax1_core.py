@@ -158,6 +158,7 @@ def brain_step(msgs, tl, first):
 
 _CORE_T = {"get_datetime", "phone_do", "screen_look", "recall_facts", "remember_fact", "tavily_live_search"}
 _GRP = [
+    (r"artifact|code likh|script|program|html|website|web page|project|file bana|calculator|app bana|job_status|pdf bana kya|bana kya", ["artifact_create","workspace_write","workspace_run","workspace_list","job_status"]),
  (r"task|reminder|alarm|yaad|remind|todo|briefing|schedule", ["add_task", "list_tasks", "complete_task", "delete_task", "daily_briefing"]),
  (r"note|likh|save|memo", ["save_smart_note", "read_note", "list_notes"]),
  (r"mail|email|contact|whatsapp|message|msg|number|send", ["send_corporate_email", "manage_contact", "send_whatsapp"]),
@@ -195,7 +196,7 @@ def brain_loop(task):
         m = brain_step(msgs, tl, step == 0)
         if not m.tool_calls:
             final = finish(m.content or ""); break
-        calls = [{"id": c.id, "type": "function", "function": {"name": c.function.name, "arguments": c.function.arguments}} for c in m.tool_calls]
+        calls = [dict({"id": c.id, "type": "function", "function": {"name": c.function.name, "arguments": c.function.arguments}}, **({"extra_content": c.extra_content} if getattr(c, "extra_content", None) else {})) for c in m.tool_calls]  # keeps Gemini 3.x thought_signature
         msgs.append({"role": "assistant", "content": m.content or "", "tool_calls": calls})
         for c in m.tool_calls:
             res = CALL(c.function.name, parse_args(c.function.arguments))

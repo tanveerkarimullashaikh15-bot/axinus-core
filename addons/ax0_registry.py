@@ -53,9 +53,15 @@ def cands(role):
             if re.search(pat, i, re.I) and (prov, i) not in out: out.append((prov, i))
     return [c for c in out if R0["dead"].get(c, 0) < time.time()]
 
+def _nox(msgs):
+    out = []
+    for m in msgs:
+        if isinstance(m, dict) and m.get("tool_calls"): m = dict(m, tool_calls=[{k: v for k, v in c.items() if k != "extra_content"} for c in m["tool_calls"]])
+        out.append(m)
+    return out
 def _msgwrap(m):
     if not isinstance(m, dict): return m
-    tcs = [types.SimpleNamespace(id=c.get("id") or ("c%d" % i), function=types.SimpleNamespace(name=c["function"]["name"], arguments=c["function"].get("arguments") or "{}")) for i, c in enumerate(m.get("tool_calls") or [])]
+    tcs = [types.SimpleNamespace(id=c.get("id") or ("c%d" % i), function=types.SimpleNamespace(name=c["function"]["name"], arguments=c["function"].get("arguments") or "{}"), extra_content=c.get("extra_content")) for i, c in enumerate(m.get("tool_calls") or [])]
     return types.SimpleNamespace(content=m.get("content") or "", tool_calls=tcs or None)
 def _http(url, key, model, msgs, tools, mt, timeout):
     p = {"model": model, "messages": msgs}
@@ -72,10 +78,10 @@ def _call(c, msgs, tools, role, mt, timeout):
         if "gpt-oss" in model: kw["reasoning_effort"] = "high" if role == "reasoner" else "low"
         if mt: kw["max_tokens"] = mt
         if tools: kw["tools"] = tools
-        try: r = groq_client.chat.completions.create(model=model, messages=msgs, **kw)
+        try: r = groq_client.chat.completions.create(model=model, messages=_nox(msgs), **kw)
         except Exception as e:
             if "reasoning_effort" in kw and not re.search(r"429|rate|quota", str(e), re.I):
-                kw.pop("reasoning_effort"); r = groq_client.chat.completions.create(model=model, messages=msgs, **kw)
+                kw.pop("reasoning_effort"); r = groq_client.chat.completions.create(model=model, messages=_nox(msgs), **kw)
             else: raise
         u = getattr(r, "usage", None)
         return r.choices[0].message, (getattr(u, "prompt_tokens", 0) or 0, getattr(u, "completion_tokens", 0) or 0)
