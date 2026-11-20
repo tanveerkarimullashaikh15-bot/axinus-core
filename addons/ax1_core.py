@@ -158,7 +158,7 @@ def brain_step(msgs, tl, first):
 
 _CORE_T = {"get_datetime", "phone_do", "screen_look", "recall_facts", "remember_fact", "tavily_live_search"}
 _GRP = [
-    (r"artifact|code likh|script|program|html|website|web page|project|file bana|calculator|app bana|job_status|pdf bana kya|bana kya", ["artifact_create","workspace_write","workspace_run","workspace_list","job_status"]),
+    (r"build|website|dashboard|artifact|code likh|script|program|html|website|web page|project|file bana|calculator|app bana|job_status|pdf bana kya|bana kya", ["build_project","artifact_create","workspace_write","workspace_run","workspace_list","job_status"]),
  (r"task|reminder|alarm|yaad|remind|todo|briefing|schedule", ["add_task", "list_tasks", "complete_task", "delete_task", "daily_briefing"]),
  (r"note|likh|save|memo", ["save_smart_note", "read_note", "list_notes"]),
  (r"mail|email|contact|whatsapp|message|msg|number|send", ["send_corporate_email", "manage_contact", "send_whatsapp"]),

@@ -59,7 +59,17 @@ def ws_run(proj, path, stdin=""):
     p = _fp(proj, path)
     if not p or not os.path.isfile(p): return JSON({"error": "file nahi mili"})
     ext = p.rsplit(".", 1)[-1].lower()
-    if ext in ("html", "htm"): return JSON({"kind": "html", "html": open(p, encoding="utf-8", errors="replace").read(MAXF)})
+    if ext in ("html", "htm"):
+        h = open(p, encoding="utf-8", errors="replace").read(MAXF); bd = os.path.dirname(p)
+        def _rd(ref):
+            q = os.path.realpath(os.path.join(bd, ref)); return open(q, encoding="utf-8", errors="replace").read() if q.startswith(os.path.realpath(_pd(proj))) and os.path.isfile(q) else None
+        def _js(m):
+            c = _rd(m.group(1)); return m.group(0) if c is None else "<script>" + c.replace("</script", "<\\/script") + "</script>"
+        def _css(m):
+            c = _rd(m.group(1)); return m.group(0) if c is None else "<style>" + c + "</style>"
+        h = re.sub(r"""<script[^>]*\ssrc=["']([^"':]+)["'][^>]*>\s*</script>""", _js, h)
+        h = re.sub(r"""<link[^>]*href=["']([^"':]+\.css)["'][^>]*>""", _css, h)
+        return JSON({"kind": "html", "html": h})
     cmd = {"py": [sys.executable, "-I", p], "js": ["node", p], "sh": ["bash", p]}.get(ext)
     if not cmd: return JSON({"error": "Run sirf .py, .js, .sh aur .html ke liye hai"})
     if ext == "py": cmd = [sys.executable, p]
@@ -86,6 +96,69 @@ def code_gen(proj, path, prompt):
     code = _strip_fence(t)
     if len(code) < 3: return JSON({"error": "Model ne code nahi diya, dobara try karo"})
     os.makedirs(os.path.dirname(p), exist_ok=True); open(p, "w", encoding="utf-8").write(code); return JSON({"ok": True, "content": code, "model": mdl})
+
+
+# ---------------- multi-file project builder (generate -> check -> fix) ----------------
+def _parse_files(t):
+    out = {}
+    for m in re.finditer(r"^=== FILE: *(\S+?) *===\s*\n(.*?)(?=^=== FILE:|\Z)", t or "", re.S | re.M):
+        out[m.group(1).strip()] = _strip_fence(m.group(2).rstrip() + "\n")
+    return out
+def _check_proj(proj):
+    errs = []; d = _pd(proj); import subprocess, html.parser
+    for root, _, fs in os.walk(d):
+        for f in fs:
+            fp = os.path.join(root, f); rel = os.path.relpath(fp, d)
+            try: src = open(fp, encoding="utf-8", errors="replace").read()
+            except Exception: continue
+            if f.endswith((".js", ".mjs")):
+                try:
+                    r = subprocess.run(["node", "--check", fp], capture_output=True, text=True, timeout=15)
+                    if r.returncode: errs.append(rel + ": JS syntax - " + r.stderr.strip().splitlines()[-1][:200] if r.stderr.strip() else rel + ": JS syntax error")
+                except Exception: pass
+            elif f.endswith(".py"):
+                try: compile(src, rel, "exec")
+                except SyntaxError as e: errs.append("%s: Python syntax line %s - %s" % (rel, e.lineno, e.msg))
+            elif f.endswith(".html"):
+                for ref in re.findall(r"""(?:src|href)=["']([^"'#?:]+?)["']""", src):
+                    if ref.startswith(("http", "//", "data", "mailto")): continue
+                    if not os.path.exists(os.path.normpath(os.path.join(os.path.dirname(fp), ref))): errs.append(rel + ": missing file " + ref)
+                for i in re.findall(r"getElementById\(['\"]([\w-]+)['\"]\)", src):
+                    if 'id="%s"' % i not in src and "id='%s'" % i not in src: errs.append(rel + ": id '%s' not found in HTML" % i)
+    jsx = [f for f in os.listdir(d) if f.endswith(".html")]
+    for h in jsx:
+        hs = open(d + "/" + h, encoding="utf-8", errors="replace").read()
+        for js in re.findall(r"""<script[^>]+src=["']([^"':]+)["']""", hs):
+            jp = os.path.normpath(os.path.join(d, js))
+            if os.path.isfile(jp):
+                for i in re.findall(r"getElementById\(['\"]([\w-]+)['\"]\)", open(jp, encoding="utf-8", errors="replace").read()):
+                    if 'id="%s"' % i not in hs and "id='%s'" % i not in hs: errs.append("%s: JS uses id '%s' missing from %s" % (js, i, h))
+    return errs[:25]
+def code_project(proj, prompt):
+    """Full multi-file project: write -> automatic static checks -> one fix pass"""
+    d = _pd(proj)
+    sysm = ("You are a senior full-stack developer and UI/UX designer. Build the COMPLETE project requested as several files (e.g. index.html, css/style.css, js/app.js, optional extra pages/components). "
+            "Output ONLY file blocks, each as a line '=== FILE: relative/path ===' followed by the full file content. No markdown fences, no explanations. "
+            "Rules: real working functionality, no placeholder sections or fake lorem content, responsive mobile+desktop, smooth animations, clean reusable structure, no external build step (plain HTML/CSS/JS, CDN only if essential), every id used in JS must exist in the HTML, every linked file must be output.")
+    u = "Project: " + _pn(proj) + "\nExisting files: " + ", ".join(f["path"] for f in json.loads(ws_files(proj))["files"][:40]) + "\nREQUEST:\n" + str(prompt)[:4000]
+    with Stage("coder", "Building project " + _pn(proj), "") as st:
+        t, mdl = llm("coder", sysm, u, mt=14000, hedge=False, timeout=240); st.model = mdl
+    files = _parse_files(t)
+    if not files: return JSON({"error": "Model ne project files nahi diye, dobara try karo"})
+    def put(fs):
+        for rel, c in fs.items():
+            fp = _fp(proj, rel)
+            if fp and len(c) > 1: os.makedirs(os.path.dirname(fp), exist_ok=True); open(fp, "w", encoding="utf-8").write(c[:MAXF])
+    put(files); errs = _check_proj(proj); fixed = False
+    if errs:
+        cur = "\n".join("=== FILE: %s ===\n%s" % (k, v[:9000]) for k, v in files.items())
+        with Stage("coder", "Fixing %d issues" % len(errs), "") as st:
+            t2, m2 = llm("coder", sysm + " Now FIX the listed errors. Output ONLY the changed files in full, same block format.", "ERRORS:\n" + "\n".join(errs) + "\n\nFILES:\n" + cur, mt=14000, hedge=False, timeout=240); st.model = m2
+        f2 = _parse_files(t2)
+        if f2: put(f2); fixed = True; files.update(f2)
+        errs = _check_proj(proj)
+    return JSON({"ok": True, "files": sorted(files), "model": mdl, "fix_pass": fixed, "remaining_issues": errs,
+                 "note": "Static checks only (JS syntax, missing files/ids); browser interactions not auto-tested."})
 
 # ---------------- artifacts ----------------
 def art_list():
@@ -115,13 +188,15 @@ def art_gen(prompt, kind="html"):
 
 def artifact_create(title: str, kind: str, content: str):
     return "Artifact saved (Studio tab me dikhega): " + json.loads(art_save(title, kind, content))["id"]
+def build_project(project: str, request: str):
+    return code_project(project, request)
 def workspace_write(project: str, path: str, content: str):
     r = json.loads(ws_write(project, path, content)); return "Saved " + path + " in project " + _pn(project) if r.get("ok") else "Error: " + str(r.get("error"))
 def workspace_run(project: str, path: str):
     r = json.loads(ws_run(project, path)); return ("Output:\n" + r.get("out", "")) if r.get("kind") == "text" else ("HTML page ready (Code Studio me Run dabao)" if r.get("kind") == "html" else "Error: " + str(r.get("error")))
 def workspace_list(project: str = "scratch"):
     fs = json.loads(ws_files(project))["files"]; return "Files in " + _pn(project) + ": " + (", ".join(f["path"] for f in fs) or "(empty)")
-for _f, _d, _w in [(artifact_create, "Save a finished HTML page / code / SVG / markdown as an Artifact shown in the Studio tab (title, kind=html|code|svg|markdown, content=full text)", "coder"), (workspace_write, "Create or overwrite a code file in a Code Studio project (project name, path like app.py, full content)", "coder"), (workspace_run, "Run a .py/.js/.sh file from a Code Studio project and return its output", "coder"), (workspace_list, "List files of a Code Studio project", "coder")]:
+for _f, _d, _w in [(artifact_create, "Save a finished HTML page / code / SVG / markdown as an Artifact shown in the Studio tab (title, kind=html|code|svg|markdown, content=full text)", "coder"), (workspace_write, "Create or overwrite a code file in a Code Studio project (project name, path like app.py, full content)", "coder"), (workspace_run, "Run a .py/.js/.sh file from a Code Studio project and return its output", "coder"), (build_project, "Build a COMPLETE multi-file website/app project in Code Studio from a request (writes all files, runs static checks, auto-fixes). Use for any 'build/create website/dashboard/app' request", "coder"), (workspace_list, "List files of a Code Studio project", "coder")]:
     try: reg_tool(_f, _d, _w)
     except Exception: pass
 
@@ -154,6 +229,6 @@ def act_list(): return JSON({"items": [{"id": r["id"], "t": time.strftime("%H:%M
 def phone_status():
     ph = globals().get("PHONE", {}); ago = time.time() - ph.get("seen", 0)
     return JSON({"online": ago < 25, "ago": int(ago) if ph.get("seen") else -1, "queued": len(ph.get("q", [])), "busy": bool(ph.get("cur") and not ph["cur"]["ev"].is_set())})
-try: ADDON_API.update({k: v for k, v in dict(ws_projects=ws_projects, ws_project_new=ws_project_new, ws_project_del=ws_project_del, ws_files=ws_files, ws_read=ws_read, ws_write=ws_write, ws_delete=ws_delete, ws_run=ws_run, code_gen=code_gen, art_list=art_list, art_get=art_get, art_save=art_save, art_del=art_del, art_gen=art_gen, act_list=act_list, phone_status=phone_status).items()}); API.update(ADDON_API)
+try: ADDON_API.update({k: v for k, v in dict(ws_projects=ws_projects, ws_project_new=ws_project_new, ws_project_del=ws_project_del, ws_files=ws_files, ws_read=ws_read, ws_write=ws_write, ws_delete=ws_delete, ws_run=ws_run, code_gen=code_gen, code_project=code_project, art_list=art_list, art_get=art_get, art_save=art_save, art_del=art_del, art_gen=art_gen, act_list=act_list, phone_status=phone_status).items()}); API.update(ADDON_API)
 except NameError: pass
 print("✅ ax8a workspace OK ->", WS_DIR)
