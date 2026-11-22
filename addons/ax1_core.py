@@ -188,22 +188,38 @@ def brain_loop(task):
     mem = globals().get("facts_text", lambda: "")()
     up = _recent_img() or (LASTUP.get("path", "") if time.time() - LASTUP.get("t", 0) < 7200 else "")
     sys_p = _AX_SYS0 + DELEG + ("\nMEMORY FACTS:\n" + mem if mem else "") + ("\nLAST UPLOADED FILE (use when user says this file/image): " + up if up else "") + "\nCURRENT TIME (IST): " + get_datetime() + "".join(f(task) for f in SYS_HOOKS)
+    heavy = len(str(task)) > 700 or bool(re.search(r"(?i)\b(phase|batch|audit|step\s*\d)\b.*\b(test|tests|report|build)", str(task)))
+    if heavy: sys_p += "\nHEAVY TASK MODE: this is a long multi-part job. Work through it step by step using real tools, one part at a time; never invent results (write NOT TESTED if a tool is unavailable). The final answer must be a DETAILED structured report in plain text (no 2-3 sentence limit), listing each part with PASS/FAIL/evidence."
     msgs = [{"role": "system", "content": sys_p}] + HISTORY[-10:] + [{"role": "user", "content": task}]
-    tl = pick_tools(task, _tl(BRAIN_TOOLS))
+    tl = _tl(BRAIN_TOOLS) if heavy else pick_tools(task, _tl(BRAIN_TOOLS))
     JOB["ntools"] = len(tl)
-    final = ""
-    for step in range(8):
-        m = brain_step(msgs, tl, step == 0)
+    final = ""; lim = 16 if heavy else 10; raw = ""
+    for step in range(lim):
+        try: m = brain_step(msgs, tl, step == 0)
+        except Exception as e:
+            emit("brain", "mark", "Step fail: " + str(e)[:80]); raw = raw or ""; break
         if not m.tool_calls:
-            final = finish(m.content or ""); break
-        calls = [dict({"id": c.id, "type": "function", "function": {"name": c.function.name, "arguments": c.function.arguments}}, **({"extra_content": c.extra_content} if getattr(c, "extra_content", None) else {})) for c in m.tool_calls]  # keeps Gemini 3.x thought_signature
+            raw = m.content or raw
+            final = finish(m.content or "") or (m.content or ""); break
+        raw = m.content or raw
+        calls = [dict({"id": c.id, "type": "function", "function": {"name": c.function.name, "arguments": c.function.arguments}}, **({"extra_content": c.extra_content} if getattr(c, "extra_content", None) else {})) for c in m.tool_calls]
         msgs.append({"role": "assistant", "content": m.content or "", "tool_calls": calls})
         for c in m.tool_calls:
-            res = CALL(c.function.name, parse_args(c.function.arguments))
-            msgs.append({"role": "tool", "tool_call_id": c.id, "content": str(res)[:6000]})
-    else:
-        final = finish("Task execution limit reached.")
-    return final or "Sir, jawab khaali aaya, dobara bolein. Take care, Sir."
+            try: res = CALL(c.function.name, parse_args(c.function.arguments))
+            except Exception as e: res = "Tool error: " + str(e)[:300]
+            msgs.append({"role": "tool", "tool_call_id": c.id, "content": str(res)[:(2500 if heavy else 6000)]})
+        if heavy and len(msgs) > 24:  # keep context small: compress old tool outputs
+            for mm in msgs[1:-8]:
+                if mm.get("role") == "tool" and len(mm["content"]) > 500: mm["content"] = mm["content"][:500] + "...[trimmed]"
+    if not final.strip():  # model empty or step limit: force a final answer from collected results, no tools
+        try:
+            msgs.append({"role": "user", "content": "Ab tools mat chalao. Abhi tak ke asli tool results ke basis par final jawab do" + (" - detailed report format me" if heavy else "") + ". Jo kaam nahi hua wo saaf likho (NOT DONE / NOT TESTED), jhooth mat bolo."})
+            m, used = chat("brain", msgs, None, timeout=90)
+            final = (m.content or "").strip()
+        except Exception as e:
+            emit("brain", "mark", "Final synth fail: " + str(e)[:80])
+        final = final or raw
+    return final or "Sir, model se jawab nahi mila (shayad quota/limit). Kuch der baad dobara bolein ya chhota hissa bhej dein. Take care, Sir."
 
 def footer():
     try:
