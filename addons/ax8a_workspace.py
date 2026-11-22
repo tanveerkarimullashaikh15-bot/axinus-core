@@ -229,6 +229,12 @@ def act_list(): return JSON({"items": [{"id": r["id"], "t": time.strftime("%H:%M
 def phone_status():
     ph = globals().get("PHONE", {}); ago = time.time() - ph.get("seen", 0)
     return JSON({"online": ago < 25, "ago": int(ago) if ph.get("seen") else -1, "queued": len(ph.get("q", [])), "busy": bool(ph.get("cur") and not ph["cur"]["ev"].is_set())})
+def see_screen(question=""):
+    q = (question or "").strip() or "Screen par kya dikh raha hai? Short me batao."
+    try: r = screen_look(q)
+    except Exception as e: r = "Error: " + str(e)[:200]
+    ok = not str(r).startswith(("Error", "Not completed"))
+    return JSON({"ok": ok, "text": str(r)[:1500]})
 PROJ_CUR = [""]
 def ws_ctx(name=""):
     PROJ_CUR[0] = _pn(name) if name else ""; return JSON({"ok": True, "project": PROJ_CUR[0]})
@@ -237,6 +243,6 @@ def _proj_hook(task):
     return "\nACTIVE PROJECT: %s. Instructions: %s. Save/read its files with workspace_* tools using project name '%s'." % (PROJ_CUR[0], (_meta(PROJ_CUR[0]).get("instructions") or "none")[:600], PROJ_CUR[0])
 try: SYS_HOOKS.append(_proj_hook)
 except NameError: pass
-try: ADDON_API.update({k: v for k, v in dict(ws_projects=ws_projects, ws_project_new=ws_project_new, ws_project_del=ws_project_del, ws_files=ws_files, ws_read=ws_read, ws_write=ws_write, ws_delete=ws_delete, ws_run=ws_run, code_gen=code_gen, ws_ctx=ws_ctx, code_project=code_project, art_list=art_list, art_get=art_get, art_save=art_save, art_del=art_del, art_gen=art_gen, act_list=act_list, phone_status=phone_status).items()}); API.update(ADDON_API)
+try: ADDON_API.update({k: v for k, v in dict(ws_projects=ws_projects, ws_project_new=ws_project_new, ws_project_del=ws_project_del, ws_files=ws_files, ws_read=ws_read, ws_write=ws_write, ws_delete=ws_delete, ws_run=ws_run, code_gen=code_gen, see_screen=see_screen, ws_ctx=ws_ctx, code_project=code_project, art_list=art_list, art_get=art_get, art_save=art_save, art_del=art_del, art_gen=art_gen, act_list=act_list, phone_status=phone_status).items()}); API.update(ADDON_API)
 except NameError: pass
 print("✅ ax8a workspace OK ->", WS_DIR)

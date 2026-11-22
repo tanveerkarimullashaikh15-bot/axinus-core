@@ -14,3 +14,12 @@ for f in ("c2_keys", "c3_tools", "c4_brain", "c5_page"):
         print("❌ c2_keys fail hua - upar ka pehla error dekho (pip packages / Colab Secrets). Boot ruk gaya."); raise SystemExit
 for f in sorted(glob.glob(R + "/addons/ax*.py")): _x(f)
 print("AXINUS boot done:", open(R + "/VERSION").read().strip() if os.path.exists(R + "/VERSION") else "")
+
+# keep the Colab runtime busy (a finished cell lets Colab idle-disconnect). Ctrl+C / stop the cell to exit.
+try:
+    if not (sec("AXINUS_NOBLOCK") if "sec" in globals() else ""):
+        import time as _t
+        print("Server chal raha hai. Is cell ko band mat karo (runtime alive rakhne ke liye).")
+        while True: _t.sleep(60)
+except KeyboardInterrupt:
+    print("stopped")
