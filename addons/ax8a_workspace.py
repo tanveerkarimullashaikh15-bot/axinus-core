@@ -207,7 +207,7 @@ def ask(task):
     rec = {"id": uuid.uuid4().hex[:6], "t": time.time(), "task": str(task)[:240], "status": "running", "result": ""}
     ACT.append(rec); del ACT[:-40]
     try:
-        r = _ask_orig(task); s = str(r); rec["status"] = "failed" if is_fail(s) else "done"; rec["result"] = s[:500]; return r
+        r = _ask_orig(task); s = str(r); rec["status"] = "failed" if is_fail(s) else "done"; rec["result"] = s[:500]; rec["lat"] = round(time.time() - rec["t"], 1); return r
     except Exception as e:
         rec["status"] = "failed"; rec["result"] = "Error: " + str(e)[:200]; raise
 def job_status(limit: int = 6):
@@ -221,11 +221,11 @@ def recent_hook(task):
     rows = [r for r in ACT[-5:] if time.time() - r["t"] < 86400 and r["task"] != str(task)[:240]]
     return ("\nRECENT ACTIVITY (all channels, use it when Sir asks about earlier tasks/files; call job_status for more):\n" + "\n".join("- %s: %s => %s" % (r["status"], r["task"][:80], r["result"][:140].replace("\n", " ")) for r in rows)) if rows else ""
 try:
-    SYS_HOOKS[:] = [h for h in SYS_HOOKS if getattr(h, "__name__", "") != "recent_hook"] + [recent_hook]
+    SYS_HOOKS[:] = [h for h in SYS_HOOKS if getattr(h, "__name__", "") != "recent_hook"]  # off: keeps voice/phone prompts small and fast; job_status tool answers on demand
     reg_tool(job_status, "Status of recent tasks from chat, voice and phone (is my PDF ready? what did you do earlier?)", "utils")
     if "job_status" not in _CORE_T: _CORE_T.add("job_status")
 except Exception as _e: print("ax8a hook warn:", _e)
-def act_list(): return JSON({"items": [{"id": r["id"], "t": time.strftime("%H:%M", time.localtime(r["t"])), "task": r["task"][:100], "status": r["status"], "result": r["result"][:160]} for r in ACT[-12:]][::-1]})
+def act_list(): return JSON({"items": [{"id": r["id"], "t": time.strftime("%H:%M", time.localtime(r["t"])), "task": r["task"][:100], "status": r["status"], "result": r["result"][:160], "lat": r.get("lat", 0)} for r in ACT[-12:]][::-1]})
 def phone_status():
     ph = globals().get("PHONE", {}); ago = time.time() - ph.get("seen", 0)
     return JSON({"online": ago < 25, "ago": int(ago) if ph.get("seen") else -1, "queued": len(ph.get("q", [])), "busy": bool(ph.get("cur") and not ph["cur"]["ev"].is_set())})
