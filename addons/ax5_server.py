@@ -92,7 +92,7 @@ try:
         urllib.request.urlopen(urllib.request.Request("https://ntfy.sh/" + CODE, data=URL.encode(), headers={"Title": "axinus url"}), timeout=10).read()
     print("📲 APP CODE (ek baar app me daalo, phir URL auto):", CODE)
 except Exception as _e: print("auto-url publish skipped:", str(_e)[:100])
-print("🔑 PIN:", PIN)
+print("🔑 PIN:", PIN, "(from your AXINUS_PIN secret)" if sec("AXINUS_PIN") else "(RANDOM this run - AXINUS_PIN secret not found; add it in Colab Secrets to keep it fixed)")
 
 def _tun_watch():
     global URL, p, CF_LOG
