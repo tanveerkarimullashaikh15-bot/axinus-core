@@ -62,6 +62,7 @@ def news_items(cat="top", force=False):
             k = re.sub(r"\W+", "", it["title"].lower())[:50]
             if k not in seen: seen.add(k); items.append(it)
     items.sort(key=lambda x: x["ts"], reverse=True)
+    _fr = [x for x in items if time.time() - x["ts"] < 10 * 86400]; items = _fr or items
     if items:
         NEWS_C[cat] = {"t": time.time(), "items": items[:12]}; jw(NEWS_PATH, {k: v for k, v in NEWS_C.items()})
         return cat, items[:12], False
