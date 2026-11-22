@@ -93,3 +93,32 @@ try:
     print("📲 APP CODE (ek baar app me daalo, phir URL auto):", CODE)
 except Exception as _e: print("auto-url publish skipped:", str(_e)[:100])
 print("🔑 PIN:", PIN)
+
+def _tun_watch():
+    global URL, p, CF_LOG
+    import urllib.request, urllib.error
+    bad = 0
+    while True:
+        time.sleep(40)
+        try:
+            ok = p.poll() is None
+            if ok and URL:
+                try: urllib.request.urlopen(URL + "/", timeout=12)
+                except urllib.error.HTTPError as e: ok = e.code < 520
+                except Exception: ok = False
+            bad = 0 if ok else bad + 1
+            if bad >= 2:
+                bad = 0; os.system("pkill cloudflared")
+                p = subprocess.Popen(["/content/cloudflared", "tunnel", "--url", "http://127.0.0.1:8000", "--no-autoupdate"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+                CF_LOG = []; _pp, _lg = p, CF_LOG
+                threading.Thread(target=lambda: [_lg.append(l) for l in _pp.stdout], daemon=True).start()
+                for _ in range(45):
+                    f = [u for u in re.findall(r"https://[a-z0-9-]+\.trycloudflare\.com", "".join(_lg)) if not u.startswith("https://api.")]
+                    if f: URL = f[-1]; break
+                    time.sleep(1)
+                print("tunnel restarted:", URL)
+                try:
+                    if URL and "CODE" in globals() and CODE: urllib.request.urlopen(urllib.request.Request("https://ntfy.sh/" + CODE, data=URL.encode(), headers={"Title": "axinus url"}), timeout=10).read()
+                except Exception: pass
+        except Exception: pass
+threading.Thread(target=_tun_watch, daemon=True).start()
