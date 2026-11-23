@@ -9,7 +9,7 @@ IC = {"menu": '<path d="M4 8h16M4 16h11"/>', "search": '<circle cx="11" cy="11" 
       "hand": '<path d="M8 12V6.5a1.5 1.5 0 0 1 3 0V11M11 10V5a1.5 1.5 0 0 1 3 0v6M14 10V6.5a1.5 1.5 0 0 1 3 0V14a6 6 0 0 1-6 6h-.5a5 5 0 0 1-4-2L4 14.5a1.5 1.5 0 0 1 2.4-1.8L8 14"/>', "conn": '<rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/><path d="M15 4h5v5M9 20H4v-5"/>', "skill": '<path d="M13 3 5 14h6l-1 7 8-11h-6z"/>',
       "copy": '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/>', "retry": '<path d="M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"/>', "spk": '<path d="M4 10v4h4l5 4V6L8 10zM16.5 9a4 4 0 0 1 0 6M19 6.5a7.5 7.5 0 0 1 0 11"/>', "edit": '<path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z"/>', "sel": '<path d="M5 7h14M5 12h14M5 17h8"/>',
       "user": '<circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/>', "brain": '<path d="M9.5 3A3.5 3.5 0 0 0 6 6.5v.3A3.5 3.5 0 0 0 4 10a3.5 3.5 0 0 0 1 2.4A3.5 3.5 0 0 0 6 18.5 3.5 3.5 0 0 0 9.5 21c1.4 0 2.5-.9 2.5-2V5c0-1.1-1.1-2-2.5-2zM14.5 3C13.1 3 12 3.9 12 5v14c0 1.1 1.1 2 2.5 2a3.5 3.5 0 0 0 3.5-2.5 3.5 3.5 0 0 0 1-6.1A3.5 3.5 0 0 0 18 6.8v-.3A3.5 3.5 0 0 0 14.5 3z"/>',
-      "wave": '<path d="M4 12h2M8 8v8M12 5v14M16 8v8M20 11v2"/>', "type": '<path d="M5 7V5h14v2M12 5v14M9 19h6"/>', "gauge": '<path d="M4 17a8 8 0 1 1 16 0M12 17l4-5"/>', "lock": '<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>', "dev": '<path d="m8 8-4 4 4 4M16 8l4 4-4 4M13.5 5l-3 14"/>', "exp": '<path d="M12 3v12M7 8l5-5 5 5M5 14v5h14v-5"/>', "diag": '<path d="M3 12h4l2-6 4 12 2-6h6"/>', "phone": '<rect x="7" y="3" width="10" height="18" rx="2"/><path d="M11 18h2"/>', "eye": '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>', "info": '<circle cx="12" cy="12" r="9"/><path d="M12 11v5.5M12 7.8h.01"/>'}
+      "wave": '<path d="M4 12h2M8 8v8M12 5v14M16 8v8M20 11v2"/>', "type": '<path d="M5 7V5h14v2M12 5v14M9 19h6"/>', "gauge": '<path d="M4 17a8 8 0 1 1 16 0M12 17l4-5"/>', "lock": '<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>', "dev": '<path d="m8 8-4 4 4 4M16 8l4 4-4 4M13.5 5l-3 14"/>', "exp": '<path d="M12 3v12M7 8l5-5 5 5M5 14v5h14v-5"/>', "diag": '<path d="M3 12h4l2-6 4 12 2-6h6"/>', "phone": '<rect x="7" y="3" width="10" height="18" rx="2"/><path d="M11 18h2"/>', "eye": '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>', "grp": '<circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0M16 5.2a3 3 0 0 1 0 5.6M17.5 14.2A6 6 0 0 1 21 20"/>', "chd": '<path d="m6 9 6 6 6-6"/>', "info": '<circle cx="12" cy="12" r="9"/><path d="M12 11v5.5M12 7.8h.01"/>'}
 def _i(k, cls="ix"): return '<svg class="' + cls + '" viewBox="0 0 24 24">' + IC[k] + '</svg>'
 MARK = '<svg viewBox="0 0 64 64" fill="currentColor"><path d="M32 5 5 59h13l4.2-9.5h19.6L46 59h13z M27.5 40 32 29.5 36.5 40z" fill-rule="evenodd"/></svg>'
 SH_CSS = open(__file__.replace("ax8_shell.py", "ax8_shell.css")).read() if False else r"""html[data-theme=ax]{--bg:#000;--card:#101010;--s1:#151515;--s2:#202020;--ln:#2a2a2a;--ln2:#3b3b3b;--acc:#ece9e3;--accT:#171615;--orb:#ece9e3;--me:#ece9e3;--tx:#ece9e3;--mut:#a39e96;--in:#0c0c0c;--ok:#86b890;--wr:#d4aa66;--er:#d98577;--serif:ui-serif,'Iowan Old Style',Georgia,'Noto Serif','Times New Roman',serif;--sans:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif}
@@ -115,6 +115,18 @@ body.hasmsg #pChats #sl .si{background:none}
 .inp{position:relative!important;bottom:auto!important;top:auto!important;left:auto!important;right:auto!important;margin:0 auto!important;transform:none!important;flex:none}
 #pChat{height:auto}
 #pChat #lg{max-height:none!important;min-height:0!important}
+
+#wcab{flex:none;width:calc(100% - 24px);max-width:736px;margin:4px auto 6px;padding:8px 8px 8px;border:1px solid #232323;border-radius:12px;background:#0a0a0a}
+.wch{display:flex;align-items:center;gap:8px;min-height:22px;font:500 14px var(--sans);color:#ececec;position:relative;padding-left:8px}
+.wch .wbar{position:absolute;left:-8px;top:-2px;bottom:-2px;width:3px;border-radius:3px;background:#34d399}
+.wch svg{width:20px;height:20px;flex:none;color:#e8e8e8}.wch b{font-weight:500}.wsep{width:1px;height:16px;background:#2e2e2e}
+.won{margin-left:auto;display:flex;align-items:center;gap:7px;font:500 13px var(--sans);color:#e6e6e6}.won i{width:9px;height:9px;border-radius:50%;background:#34d399;box-shadow:0 0 6px rgba(52,211,153,.7)}.won em{font-style:normal}
+#wct{width:26px;height:26px;border:0;background:none;color:#ddd;display:grid;place-items:center;cursor:pointer;padding:0}#wct svg{width:19px;height:19px;transition:transform .2s}#wcab.min #wct svg{transform:rotate(-90deg)}
+.wrow{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(50px,1fr);gap:6px;margin-top:8px;overflow-x:auto;scrollbar-width:none}.wrow::-webkit-scrollbar{display:none}#wcab.min .wrow{display:none}
+.wk{position:relative;display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 0 4px;min-width:0;border:1px solid #262626;border-radius:10px;background:#0e0e0e;transition:border-color .3s,box-shadow .3s}
+.wk canvas{width:40px;height:40px;image-rendering:pixelated;image-rendering:crisp-edges}.wk span{font:500 11px var(--sans);color:#dcdcdc}
+.wk .wdot{position:absolute;top:4px;right:4px;width:7px;height:7px;border-radius:50%;background:#34d399;box-shadow:0 0 5px rgba(52,211,153,.6)}
+.wk.act{border-color:#2f7f62;box-shadow:0 0 8px rgba(52,211,153,.25)}
 """
 SH_HTML = ('<div id="nov"></div><aside id="nsb"><div class="nh"><b>AXINUS</b><button id="nsrch" title="Search">' + _i("search") + '</button></div>'
   + "".join('<button class="ni" data-go="%s">%s<span>%s</span></button>' % (k, _i(ic), n) for k, ic, n in [("projects", "proj", "Projects"), ("code", "code", "Code"), ("studio", "art", "Artifacts")])
@@ -131,7 +143,7 @@ SH_HTML = ('<div id="nov"></div><aside id="nsb"><div class="nh"><b>AXINUS</b><bu
   + '<div id="vo"><div class="vt"><button id="vgear" title="Voice settings">' + _i("set") + '</button></div><div id="vmid"><canvas id="vcv"></canvas><div id="vgr"></div><div id="vst"></div><div id="vtr"></div></div><button id="vmic" title="Start / stop">' + _i("mic") + '</button><div id="vbar"><div class="chip2">Gemini Live</div><button id="vx" title="Close">' + _i("x") + '</button></div></div>'
   + '<div id="dlgw"><div id="dlg"></div></div><div id="avw"><div class="h"><b id="avt"></b><button class="btn3" id="avc">Copy</button><button class="btn3" id="avs">To Code Studio</button><button class="btn3 d" id="avd">Delete</button><button class="btn3" id="avx">Close</button></div><div id="avb"></div></div>')
 def build_chat(chips):
-    return ('<section class="pn" id="pChat"><div id="wlc">' + MARK + '<h1 id="wgr"></h1></div>'
+    return ('<section class="pn" id="pChat"><div id="wcab"><div class="wch"><i class="wbar"></i>' + _i("grp") + '<b>Workers Cabin</b><span class="wsep"></span><span class="won"><i></i><em id="wcn">6 Workers Online</em></span><button id="wct" title="Show / hide">' + _i("chd") + '</button></div><div class="wrow" id="wrow">' + "".join('<div class="wk" data-w="%s"><i class="wdot"></i><canvas width="32" height="32"></canvas><span>%s</span></div>' % (a, b) for a, b in [("coder", "Coder"), ("reason", "Resoner"), ("eyes", "Vision"), ("mail", "Mail"), ("research", "Research"), ("core", "Core")]) + '</div></div><div id="wlc">' + MARK + '<h1 id="wgr"></h1></div>'
             '<div id="ap" class="ap" style="display:none"><div class="aph">APPROVAL REQUIRED</div><div id="apm"></div><div class="apb"><button id="apy">Approve</button><button id="apn">Deny</button></div></div>'
             '<div id="lg"></div><div id="lact"><div class="h"><i></i><span id="lat">Working...</span><em>steps</em></div><div class="st" id="las"></div></div>'
             '<div class="inp"><div id="edb"><span>Editing message</span><button id="edx">Cancel</button></div><div class="cbox"><textarea id="tx" rows="1" placeholder="Chat with AXINUS..." autocomplete="off"></textarea><div class="crow"><button class="cib" id="cplus" title="Add">' + _i("plus") + '</button><span class="sp"></span><button class="cib" id="ceye" title="Look at my screen">' + _i("eye") + '</button><button class="cib" id="cmic" title="Voice">' + _i("mic") + '</button><button id="bsend" title="Send">' + _i("send") + '</button></div></div><div class="cfoot">AXINUS is AI and can make mistakes.</div></div>'
@@ -233,6 +245,40 @@ if(run||th){la.classList.add('on');clearTimeout(lt);lt=setTimeout(()=>la.classLi
 $('las').innerHTML=ev.map(e=>'<div class="'+(e.classList.contains('done')?'done':e.classList.contains('fail')?'fail':'')+'">'+E(e.textContent.trim().slice(0,120))+'</div>').join('')||'<div>Working...</div>';
 const f=ev[0];$('lat').textContent=f?f.textContent.trim().slice(0,60):'Working...';}
 new MutationObserver(steps).observe($('al'),{childList:true,subtree:true,attributes:true});new MutationObserver(steps).observe(B,{attributes:true,attributeFilter:['data-m']});
+
+/* ---------- Workers cabin: 6 pixel-art avatars ---------- */
+const SK='#f1c7a0',SKS='#d9a67c',OL='#0d0e14';
+const PAL={coder:{h:'#16171f',hl:'#3a3f55',iris:'#3b6fe0',c:'#3b4560'},reason:{h:'#17181f',hl:'#3a3d4d',iris:'#5a3a22',c:'#eef1f6'},eyes:{h:'#4b2a7a',hl:'#8a5cd0',iris:'#7a4fe0',c:'#262a3a'},mail:{h:'#7a4a2a',hl:'#a8703f',iris:'#6a3f20',c:'#1d1f27'},research:{h:'#dfe3ee',hl:'#aeb4c8',iris:'#2aa6b8',c:'#8c93a3'},core:{h:'#101117',hl:'#2a2d3a',iris:'#222',c:'#15161c'}};
+function draw(cv,k){const x=cv.getContext('2d');x.clearRect(0,0,32,32);const P=PAL[k],R=(a,y,w,h,c)=>{x.fillStyle=c;x.fillRect(a,y,w,h);};
+if(k==='eyes')R(6,6,20,20,P.h);if(k==='mail')R(7,7,18,20,P.h);
+if(k==='coder'||k==='research')R(9,21,14,4,k==='coder'?'#4d5978':'#9aa1b0');
+R(5,25,22,7,P.c);R(7,24,18,1,P.c);
+if(k==='reason'){R(12,24,8,8,'#2a3350');R(15,25,2,6,'#3d6fd6');R(11,24,2,8,'#dfe4ec');R(19,24,2,8,'#dfe4ec');R(5,25,1,7,'#cfd5e0');R(26,25,1,7,'#cfd5e0');}
+if(k==='coder'||k==='research'){R(13,26,1,5,'#eef1f8');R(18,26,1,5,'#eef1f8');R(10,30,12,1,'#00000033');}
+if(k==='eyes'){R(13,24,6,1,'#fff');R(9,28,14,1,'#3a4058');}
+if(k==='mail'){R(11,24,10,2,'#fff');R(15,25,2,2,'#d23a4e');R(8,28,16,1,'#2a2d38');}
+if(k==='core'){R(13,24,6,8,'#f2f4f8');R(15,25,2,6,'#222a44');R(11,25,2,7,'#0b0c10');R(19,25,2,7,'#0b0c10');}
+R(14,22,4,3,SKS);
+R(9,8,14,13,SK);R(10,21,12,1,SK);R(11,22,10,1,SKS);R(9,8,1,1,'#0000');x.clearRect(9,8,1,1);x.clearRect(22,8,1,1);x.clearRect(9,20,1,1);x.clearRect(22,20,1,1);
+R(8,15,1,3,SK);R(23,15,1,3,SK);R(9,17,1,3,SKS);R(22,17,1,3,SKS);
+const eye=(a)=>{R(a,14,3,3,'#fff');R(a+1,14,2,3,P.iris);R(a+1,15,1,1,'#05060a');R(a+2,14,1,1,'#ffffffcc');};
+if(k!=='core'){eye(11);eye(18);}
+R(11,12,3,1,P.h==='#dfe3ee'?'#9ba2b8':P.h);R(18,12,3,1,P.h==='#dfe3ee'?'#9ba2b8':P.h);
+R(16,17,1,1,SKS);R(15,19,3,1,'#b5655a');R(10,18,2,1,'#f2a7a0');R(20,18,2,1,'#f2a7a0');
+if(k==='coder'){R(8,5,16,4,P.h);R(9,4,14,1,P.h);R(8,9,2,6,P.h);R(22,9,2,6,P.h);R(10,9,12,2,P.h);R(10,11,2,2,P.h);R(14,11,2,1,P.h);R(17,11,3,2,P.h);R(20,11,2,2,P.h);R(12,5,4,1,P.hl);R(18,6,2,1,P.hl);}
+if(k==='reason'){R(8,5,16,4,P.h);R(9,4,14,1,P.h);R(8,9,1,5,P.h);R(23,9,1,5,P.h);R(9,9,13,2,P.h);R(9,11,4,1,P.h);R(13,5,5,1,P.hl);
+ for(const a of [10,17]){R(a,13,5,1,'#cfd4de');R(a,17,5,1,'#cfd4de');R(a,14,1,3,'#cfd4de');R(a+4,14,1,3,'#cfd4de');}R(15,15,2,1,'#cfd4de');}
+if(k==='eyes'){R(9,8,14,3,P.h);R(10,11,3,2,P.h);R(19,11,3,2,P.h);R(8,9,2,13,P.h);R(22,9,2,13,P.h);R(12,7,2,3,P.hl);R(19,8,2,2,P.hl);R(9,10,1,10,P.hl);
+ R(7,5,18,1,'#e8ebf2');R(7,6,1,8,'#e8ebf2');R(24,6,1,8,'#e8ebf2');R(5,12,3,7,'#f4f6fa');R(24,12,3,7,'#f4f6fa');R(6,13,1,5,'#9aa3b8');R(25,13,1,5,'#9aa3b8');}
+if(k==='mail'){R(9,7,14,4,P.h);R(8,9,3,10,P.h);R(21,9,3,10,P.h);R(13,10,2,2,P.h);R(17,10,2,2,P.h);R(11,9,1,1,'#fff');R(12,9,1,1,'#f6a6c1');R(20,9,1,1,'#fff');R(12,6,5,1,P.hl);R(9,19,2,5,P.h);R(21,19,2,5,P.h);}
+if(k==='research'){R(8,5,16,5,P.h);R(9,3,2,2,P.h);R(13,2,3,3,P.h);R(18,3,3,2,P.h);R(21,4,2,2,P.h);R(8,9,2,5,P.h);R(22,9,2,5,P.h);R(10,10,12,2,P.h);R(11,12,2,1,P.h);R(15,12,2,1,P.h);R(19,12,2,1,P.h);R(10,6,4,1,P.hl);R(17,7,3,1,P.hl);}
+if(k==='core'){R(8,5,16,4,P.h);R(9,4,14,1,P.h);R(8,9,2,4,P.h);R(22,9,2,4,P.h);R(13,5,5,1,P.hl);R(10,13,5,3,'#07070b');R(17,13,5,3,'#07070b');R(15,13,2,1,'#07070b');R(11,13,2,1,'#6a7ac0');R(18,13,2,1,'#6a7ac0');R(9,13,1,1,'#07070b');R(22,13,1,1,'#07070b');}
+const d=x.getImageData(0,0,32,32),a=d.data,o=new Uint8ClampedArray(a);for(let yy=0;yy<32;yy++)for(let xx=0;xx<32;xx++){const i=(yy*32+xx)*4;if(a[i+3]>0)continue;const n=[[1,0],[-1,0],[0,1],[0,-1]].some(([dx,dy])=>{const X=xx+dx,Y=yy+dy;return X>=0&&Y>=0&&X<32&&Y<32&&a[(Y*32+X)*4+3]>0;});if(n){o[i]=13;o[i+1]=14;o[i+2]=20;o[i+3]=255;}}x.putImageData(new ImageData(o,32,32),0,0);}
+document.querySelectorAll('#wrow .wk').forEach(e=>draw(e.querySelector('canvas'),e.dataset.w));
+$('wct').onclick=()=>{const c=$('wcab');c.classList.toggle('min');ss('axwc',c.classList.contains('min')?'1':'');};if(ls('axwc',''))$('wcab').classList.add('min');
+const WM={coder:['coder'],reason:['brain','reason'],eyes:['eyes'],mail:['mail','utils'],research:['research']};
+async function wpoll(){if(document.hidden||(B.dataset.pg||'chat')!=='chat')return;const r=await api('workers'),a=(r&&r.active)||[];let any=false;document.querySelectorAll('#wrow .wk').forEach(e=>{const k=e.dataset.w,on=k==='core'?false:(WM[k]||[]).some(z=>a.includes(z));if(on)any=true;e.classList.toggle('act',on);});const c=document.querySelector('#wrow .wk[data-w=core]');if(c)c.classList.toggle('act',any);}
+setInterval(wpoll,4000);
 /* ---------- Voice screen with AXINUS core ---------- */
 const vo=$('vo'),vcv=$('vcv'),vx=vcv.getContext('2d'),DPR=Math.min(2,window.devicePixelRatio||1),CW=320;vcv.width=vcv.height=CW*DPR;let vraf=0,vlast=0;
 const VS={off:'Tap the mic to start',wait:'Connecting...',live:'Listening',think:'Thinking...',err:'Connection problem. Tap the mic to retry'};
