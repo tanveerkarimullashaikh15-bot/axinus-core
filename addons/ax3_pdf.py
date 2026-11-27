@@ -57,7 +57,7 @@ def _render_dot(ns, es, out, lr):
     for a, b, lab in es:
         if a in ids and b in ids: L.append('%s -> %s%s;' % (ids[a], ids[b], ' [label="%s"]' % _esc(lab)[:30] if lab else ""))
     L.append("}")
-    r = subprocess.run(["dot", "-Tpng", "-Gdpi=150", "-o", out], input="\n".join(L).encode(), capture_output=True, timeout=30)
+    r = subprocess.run(["dot", "-Tpng", "-Gdpi=300", "-o", out], input="\n".join(L).encode(), capture_output=True, timeout=30)
     if r.returncode != 0 or not os.path.exists(out): raise RuntimeError("dot failed " + r.stderr.decode()[:80])
 
 def _render_mpl_graph(ns, es, out):
@@ -83,7 +83,7 @@ def _render_mpl_graph(ns, es, out):
         ax.add_patch(FancyBboxPatch((x - 0.95, y - 0.28), 1.9, 0.56, boxstyle="round,pad=0.02,rounding_size=0.12", fc="#E8F1FB", ec="#2F6690"))
         ax.text(x, y, textwrap.fill(n, 18), ha="center", va="center", fontsize=8)
     ax.set_xlim(-6, 6); ax.set_ylim(-1.5 * (max(rank) + 1) + 0.5, 0.8); ax.axis("off")
-    fig.savefig(out, dpi=150, bbox_inches="tight"); plt.close(fig)
+    fig.savefig(out, dpi=240, bbox_inches="tight"); plt.close(fig)
 
 def _render_mermaid_seq(spec, out):
     ps = [str(x) for x in spec.get("participants", [])][:8]; ln = ["sequenceDiagram"]; clean = lambda s: re.sub(r"[;#\n:]", " ", str(s))[:50]
@@ -106,7 +106,7 @@ def _render_chart(spec, out):
     else: ax.bar(labels, vals, color=col)
     if k != "pie": ax.set_ylabel(str(c.get("ylabel", ""))[:30]); plt.xticks(rotation=30, ha="right", fontsize=8); ax.spines[["top", "right"]].set_visible(False)
     ax.set_title(str(spec.get("title", ""))[:60], fontsize=11)
-    fig.savefig(out, dpi=150, bbox_inches="tight"); plt.close(fig)
+    fig.savefig(out, dpi=240, bbox_inches="tight"); plt.close(fig)
 
 def make_diagram_core(desc, kind="auto"):
     """returns (png_path, caption, model_label)"""

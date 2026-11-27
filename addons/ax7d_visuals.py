@@ -7,11 +7,11 @@ def wiki_photo(q, work):
     """returns (path, caption) or None. Only freely licensed images, with credit."""
     try:
         r = requests.get("https://commons.wikimedia.org/w/api.php", params={"action": "query", "generator": "search", "gsrnamespace": 6, "gsrsearch": q + " filetype:bitmap", "gsrlimit": 8,
-            "prop": "imageinfo", "iiprop": "url|mime|extmetadata|size", "iiurlwidth": 900, "format": "json"}, headers=_UA, timeout=15)
+            "prop": "imageinfo", "iiprop": "url|mime|extmetadata|size", "iiurlwidth": 1600, "format": "json"}, headers=_UA, timeout=15)
         pages = sorted((r.json().get("query", {}).get("pages", {})).values(), key=lambda p: p.get("index", 99))
         for p in pages:
             ii = (p.get("imageinfo") or [{}])[0]; md = ii.get("extmetadata", {}); lic = (md.get("LicenseShortName") or {}).get("value", "")
-            if ii.get("mime") not in ("image/jpeg", "image/png") or not _OKLIC.search(lic) or ii.get("width", 0) < 500 or "-sa" in lic.lower() and False: continue
+            if ii.get("mime") not in ("image/jpeg", "image/png") or not _OKLIC.search(lic) or ii.get("width", 0) < 900 or "-sa" in lic.lower() and False: continue
             u = ii.get("thumburl") or ii.get("url"); b = requests.get(u, headers=_UA, timeout=25).content
             if len(b) < 15000: continue
             f = work + "/ph_" + uuid.uuid4().hex[:5] + (".png" if ii["mime"].endswith("png") else ".jpg"); pathlib.Path(f).write_bytes(b)
