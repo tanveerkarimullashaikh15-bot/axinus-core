@@ -146,6 +146,8 @@ def route_task(t):
     if m and re.search(r"\bpdf\b|report|document", low): return ("report", m.group(1), t[m.end():].lstrip(". "))
     ri = _recent_img()
     if ri and len(t) < 160 and re.search(r"\bpdf\b|report", low) and re.search(r"\b(isko|ise|isse|iss|is image|is photo|is picture|this image|this photo|this picture|uploaded|attached|isme se)\b", low): return ("report", ri, t)
+    if len(low) < 60 and re.search(r"visuals?[ _]?(test|check)", low): return ("direct", "visuals_check")
+    if len(low) < 60 and re.search(r"pdf[ _]?(test|check)", low): return ("direct", "pdf_check")
     if re.search(r"daily briefing|\bbriefing\b|morning brief", low): return ("briefing",)
     return ("brain",)
 
@@ -241,6 +243,7 @@ def ask(task):
         with Stage("brain", "Coordinating", GROQ_M):
             rt = route_task(str(task))
             if rt[0] == "report": final = run_report_job(rt[1], rt[2])
+            elif rt[0] == "direct": final = "RAW RESULT (not summarized):\n" + str(globals()[rt[1]]())
             elif rt[0] == "briefing": final = briefing_text()
             else: final = brain_loop(str(task))
     except Exception as e:
