@@ -13,7 +13,7 @@ LIMITS = {"groq": 200000, "cerebras": 1000000}
 BADM = re.compile(r"whisper|guard|tts|orpheus|embed|safeguard|rerank|allam|prompt", re.I)
 GROQ_DAILY = 200000
 ROLES = {
-    "brain":    [("cerebras", r"gpt-oss-120b"), ("groq", r"gpt-oss-120b"), ("cerebras", r"qwen.*235"), ("groq", r"qwen"), ("gemini", r"lite"), ("gemini", r"^(?!.*lite).*flash"), ("groq", r"gpt-oss-20b")],
+    "brain":    [("groq", r"gpt-oss-120b"), ("cerebras", r"gpt-oss-120b"), ("cerebras", r"qwen.*235"), ("groq", r"qwen"), ("gemini", r"lite"), ("gemini", r"^(?!.*lite).*flash"), ("groq", r"gpt-oss-20b")],
     "coder":    [("groq", r"qwen"), ("cerebras", r"qwen.*235"), ("cerebras", r"gpt-oss-120b"), ("groq", r"gpt-oss-120b"), ("gemini", r"^(?!.*lite).*flash"), ("gemini", r"lite")],
     "reasoner": [("cerebras", r"gpt-oss-120b"), ("cerebras", r"qwen.*235"), ("groq", r"gpt-oss-120b"), ("gemini", r"^(?!.*lite).*flash"), ("groq", r"qwen")],
     "phone":    [("groq", r"gpt-oss-20b"), ("cerebras", r"llama.*8b|llama3.1"), ("groq", r"qwen"), ("gemini", r"lite"), ("cerebras", r"gpt-oss-120b"), ("groq", r"gpt-oss-120b")],
@@ -101,12 +101,14 @@ def _classify(e):
     if re.search(r"tool_use_failed|failed to call|invalid.*tool|\b50[0234]\b|time.?d? ?out|connection", s, re.I): return "retry"
     return 60
 
-def _meter(c, tin=0, tout=0, err=False, msg=""):
+def _meter(c, tin=0, tout=0, err=False, msg="", ms=0):
     d = datetime.datetime.now(IST0).strftime("%Y-%m-%d")
     if METER["day"] != d: METER["day"] = d; METER["m"] = {}
     x = METER["m"].setdefault(label(c), {"calls": 0, "tin": 0, "tout": 0, "err": 0})
     if err: x["err"] += 1; x["last"] = re.sub(r"(key|token)=[\w-]+", "***", str(msg))[:110]
-    else: x["calls"] += 1; x["tin"] += int(tin); x["tout"] += int(tout)
+    else:
+        x["calls"] += 1; x["tin"] += int(tin); x["tout"] += int(tout)
+        if ms: x["ms"] = int(ms) if not x.get("ms") else int(x["ms"] * 0.7 + ms * 0.3)
     R0["n"] += 1
     if R0["n"] % 15 == 0:
         try: pathlib.Path(MEM_DIR + "/meter.json").write_text(json.dumps(METER))
@@ -130,7 +132,7 @@ def meter_data():
             lt = "~%d req/din" % rpd if rpd else "limit alag (pata nahi)"
         if prov in globals().get("EXTRA_LIM", {}): lt = EXTRA_LIM[prov]
         pct = round(100 * used / lim) if lim else (round(100 * v["calls"] / rpd) if prov == "gemini" and rpd else None)
-        rows.append({"model": k, "roles": sorted(roles.get(k, [])), "calls": v["calls"], "tokens": used, "err": v["err"], "last": v.get("last", ""), "pct": pct, "limit": lt, "dead_s": dead.get(k, 0)})
+        rows.append({"model": k, "roles": sorted(roles.get(k, [])), "calls": v["calls"], "tokens": used, "err": v["err"], "ms": v.get("ms", 0), "last": v.get("last", ""), "pct": pct, "limit": lt, "dead_s": dead.get(k, 0)})
     return {"day": METER["day"] or datetime.datetime.now(IST0).strftime("%Y-%m-%d"), "rows": rows}
 
 def _hedged(role, cs, msgs, tools, mt, timeout):
@@ -162,7 +164,7 @@ def chat(role, msgs, tools=None, mt=None, timeout=60, hedge=False):
     for c in cs:
         for attempt in (0, 1):
             try:
-                m, (a, b) = _call(c, msgs, tools, role, mt, timeout); _meter(c, a, b); R0["last"][role] = label(c); return m, label(c)
+                t0 = time.time(); m, (a, b) = _call(c, msgs, tools, role, mt, timeout); _meter(c, a, b, ms=(time.time() - t0) * 1000); R0["last"][role] = label(c); return m, label(c)
             except Exception as e:
                 last = e; h = _classify(e); _meter(c, err=True, msg=e)
                 if h == "retry" and attempt == 0: time.sleep(1.5); continue
