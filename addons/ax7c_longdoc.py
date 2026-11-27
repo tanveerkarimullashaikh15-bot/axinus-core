@@ -5,6 +5,9 @@ from concurrent.futures import ThreadPoolExecutor
 CUR_TASK = globals().get("CUR_TASK") or [""]
 LONG_DIR = globals().get("LONG_DIR") or ((ROOT_DIR + "/PDFs") if "ROOT_DIR" in globals() else "/tmp/ax_long")  # on Drive, under ROOT_DIR so links work
 WORK_DIR = "/tmp/ax_long"
+def _ENGV():
+    try: return open((globals().get("AXC_ROOT") or "/content/axc") + "/VERSION").read().strip()
+    except Exception: return "?"
 LASTV = globals().get("LASTV") or [None]
 _MC = globals().get("_MC") or {}
 
@@ -17,6 +20,7 @@ def _stage(w, msg, model=""):
         yield _S()
 
 # ---------------- math -> image ----------------
+def _delim(t): return re.sub(r"\\\[(.+?)\\\]", lambda m: "$$" + m.group(1) + "$$", re.sub(r"\\\((.+?)\\\)", lambda m: "$" + m.group(1) + "$", str(t), flags=re.S), flags=re.S)
 def _tex_fix(t):
     t = re.sub(r"\\(?:text|mathrm)\{([^{}]*)\}", lambda m: r"\mathrm{" + m.group(1).strip().replace(" ", r"\ ") + "}" if " " in m.group(1).strip() else m.group(0), t.strip())
     for a, b in ((r"\dfrac", r"\frac"), (r"\tfrac", r"\frac"), (r"\text{", r"\mathrm{"), (r"\dots", r"\ldots"), (r"\Longleftrightarrow", r"\Leftrightarrow"), (r"\longrightarrow", r"\rightarrow"), (r"\!", ""), (r"\displaystyle", "")): t = t.replace(a, b)
@@ -196,7 +200,7 @@ def parse_pages(text):
     if m:
         a, b = int(m.group(1)), int(m.group(2)); return (min(a, b), max(a, b)) if 0 < min(a, b) <= max(a, b) <= 400 else (0, 0)
     ms = list(re.finditer(r"(\d{1,3})\s*\+?\s*pages?\b", t))
-    if ms: n = int(ms[-1].group(1)); return (max(1, int(n * 0.85)), int(n * 1.15) + 1) if 1 < n <= 400 else (0, 0)
+    if ms: n = int(ms[-1].group(1)); return ((n, n) if n <= 15 else (max(1, int(n * 0.85)), int(n * 1.15) + 1)) if 1 < n <= 400 else (0, 0)
     return (0, 0)
 
 # ---------------- DC circuits pack assembly ----------------
@@ -325,7 +329,7 @@ def _json(t):
     if not m: raise ValueError("no json")
     return json.loads(m.group(0))
 WSYS = ("You are an expert author of textbook-style study material. Write ONE section in markdown. Use ### subheadings. Explain concepts fully: definition, intuition, formulas ONLY if the topic is mathematical/scientific - for general, tech-news or social topics use comparison tables, timelines and concrete named examples INSTEAD of formulas; when FRESH WEB FACTS are given, use the real names, numbers and dates from them (LaTeX only between $...$ inline and $$...$$ for display; simple LaTeX: \\frac, \\sqrt, \\sum, Greek letters, subscripts), step-by-step derivations, worked examples with realistic numbers (check all arithmetic), tables where useful, applications, common mistakes. "
-        "Never start with a ### heading that repeats the section title. Use '> [EXAM]' ONLY for exam/study topics (omit it for news, trends, business); never restate the same fact as other sections. Use callout lines that each fit on ONE line: '> [DEF] ...', '> [FORMULA] $$...$$', '> [EXAM] ...'. Never repeat other sections. No title line. No code fences. Be accurate; if unsure of a fact, leave it out.")
+        "Use $...$ for math, never \\( \\). Never write 'diagram (described)' or text describing a picture: visuals are inserted automatically by the system. Never start with a ### heading that repeats the section title. Use '> [EXAM]' ONLY for exam/study topics (omit it for news, trends, business); never restate the same fact as other sections. Use callout lines that each fit on ONE line: '> [DEF] ...', '> [FORMULA] $$...$$', '> [EXAM] ...'. Never repeat other sections. No title line. No code fences. Be accurate; if unsure of a fact, leave it out.")
 def make_generic_doc(topic, request, pages):
     pmin, pmax = pages if pages and pages[1] else (8, 12); target_pages = (pmin + pmax) / 2.0; wpp = 330
     with _stage("brain", "Planning outline", "") as st:
@@ -343,7 +347,7 @@ def make_generic_doc(topic, request, pages):
             except Exception as e: st.note = "web: " + str(e)[:50]
     def write(i, extra=""):
         s = secs[i]; u = "Document: %s\nSection %d of %d: %s\nCover: %s\nTarget length: about %d words.%s\nUser's overall request (for context, follow its rules):\n%s" % (plan.get("title", topic), i + 1, len(secs), s["title"], s.get("brief", ""), per, extra, request[:2500]) + facts
-        t, mdl = _llm_call("writer", WSYS, u, mt=min(4000, int(per * 2.2) + 400), timeout=120); return i, re.sub(r"```.*?```", "", t, flags=re.S).strip()
+        t, mdl = _llm_call("writer", WSYS, u, mt=min(4000, int(per * 2.2) + 400), timeout=120); return i, _delim(re.sub(r"```.*?```", "", t, flags=re.S)).strip()
     with _stage("writer", "Writing %d sections" % len(secs), "") as st:
         with ThreadPoolExecutor(3) as ex:
             futs = [ex.submit(write, i) for i in range(len(secs))]
@@ -406,7 +410,7 @@ def make_long_pdf(topic: str, request: str = "", pages: str = "") -> str:
     if not ok: return "Error: PDF verify fail - " + str(info)[:150]
     lk = file_link(out) if "file_link" in globals() else out
     note = "" if (n >= pmin and n <= pmax) else " (requested %d-%d pages; got %d - %s)" % (pmin, pmax, n, "sab content aa chuka, padding nahi ki" if n < pmin else "sabse compact layout bhi isse chhota nahi hua")
-    return "Saved: PDF %s (%d pages, %d chapters, TOC + page numbers + bookmarks, engine: %s, %s)%s\nPDF link: %s %s" % (out, n, nch, eng, mode, note, lk, ("\nVisuals: %(diagrams)d diagrams, %(photos)d photos%(e)s" % dict(LASTV[0], e=(" | diagram error: " + LASTV[0].get("err", "")) if LASTV[0].get("err") else "")) if LASTV[0] else "")
+    return "[engine %s] Saved: PDF %s (%d pages, %d chapters, TOC + page numbers + bookmarks, engine: %s, %s)%s\nPDF link: %s %s" % (_ENGV(), out, n, nch, eng, mode, note, lk, ("\nVisuals: %(diagrams)d diagrams, %(photos)d photos%(e)s" % dict(LASTV[0], e=(" | diagram error: " + LASTV[0].get("err", "")) if LASTV[0].get("err") else "")) if LASTV[0] else "")
 
 try: reg_tool(make_long_pdf, "LONG detailed multi-page PDF: full chapter, complete notes, study material, textbook, 'N pages' (topic, request=full original user request, pages='10-15'). Real equations, circuit diagrams, TOC, page numbers. Use this instead of make_rich_pdf whenever the user wants detail, many pages, a chapter or a syllabus covered", "utils")
 except NameError: pass

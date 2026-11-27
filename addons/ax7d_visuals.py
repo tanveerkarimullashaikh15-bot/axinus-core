@@ -30,7 +30,7 @@ def _dia(title, text, out_dir):
     last = ""
     for role in ("designer", "writer", "brain", "fast"):
         try:
-            raw, _ = llm(role, SPEC_SYS, "Kind hint: auto\nDescription:\n" + (title + "\n" + text)[:3500], timeout=60)
+            raw, _ = llm(role, SPEC_SYS, "Kind hint: " + ("chart" if re.search(r"chart|graph|growth|over the years|trend", title, re.I) else "auto") + "\nDescription:\n" + (title + "\n" + text)[:3500], timeout=60)
             spec = _json_from(raw)
             if not isinstance(spec, dict): raise RuntimeError("spec parse")
             out = out_dir + "/dg_" + uuid.uuid4().hex[:6] + ".png"; ty = spec.get("type", "flowchart"); cap = str(spec.get("title", title))[:70]
@@ -96,3 +96,25 @@ def add_visuals(secs, texts, work, stage=None):
             texts[i] = texts[i].rstrip() + "\n" + add
     return st
 print("✅ ax7d visuals OK")
+
+def visuals_test():
+    """Self-test of every visual source: reports exact error per step (run: visuals_test)."""
+    R = {}; import tempfile; w = tempfile.mkdtemp()
+    r = wiki_photo("solar panel", w); R["wikimedia_photo"] = ("OK " + r[1][:60]) if r else "FAIL (no result or network blocked)"
+    try: d = cf_image("solar panel on a roof, clean educational illustration"); R["cloudflare_flux"] = "OK %d KB" % (len(d) // 1024)
+    except Exception as e: R["cloudflare_flux"] = "FAIL: " + str(e)[:140]
+    try: p, c = _dia("Photovoltaic effect", "## Light absorption\n## Carrier generation\n## Separation\n## Collection", w); R["diagram"] = "OK " + c
+    except Exception as e: R["diagram"] = "FAIL: " + str(e)[:140]
+    try: p, c = _dia("Capacity growth chart", "India solar capacity GW: 2019 34, 2020 39, 2021 49, 2022 63, 2023 73, 2024 97, 2025 125", w); R["chart"] = "OK " + c
+    except Exception as e: R["chart"] = "FAIL: " + str(e)[:140]
+    R["engine"] = _ENGV() if "_ENGV" in globals() else "?"
+    return R
+try: ADDON_API["visuals_test"] = visuals_test; API.update(ADDON_API)
+except NameError: pass
+
+def visuals_check() -> str:
+    """Run the visual self-test: Wikimedia photo, Cloudflare FLUX image, diagram, chart; shows exact error for each."""
+    return "\n".join("%s: %s" % kv for kv in visuals_test().items())
+try:
+    reg_tool(visuals_check, "Self-test of PDF visuals (photo, AI image, diagram, chart) - say 'visuals test'", "utils"); _GRP.append((r"visuals?[ _]?(test|check)", ["visuals_check", "pdf_check"]))
+except NameError: pass

@@ -145,7 +145,7 @@ def route_task(t):
     m = re.search(r"uploaded file path:\s*(\S+?\.(?:jpg|jpeg|png|webp))", t, re.I)
     if m and re.search(r"\bpdf\b|report|document", low): return ("report", m.group(1), t[m.end():].lstrip(". "))
     ri = _recent_img()
-    if ri and re.search(r"\bpdf\b|report", low) and re.search(r"\b(image|photo|picture|pic|isko|ise|this|file)\b", low): return ("report", ri, t)
+    if ri and len(t) < 160 and re.search(r"\bpdf\b|report", low) and re.search(r"\b(isko|ise|isse|iss|is image|is photo|is picture|this image|this photo|this picture|uploaded|attached|isme se)\b", low): return ("report", ri, t)
     if re.search(r"daily briefing|\bbriefing\b|morning brief", low): return ("briefing",)
     return ("brain",)
 

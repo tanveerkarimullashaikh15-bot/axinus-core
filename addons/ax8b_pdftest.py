@@ -26,4 +26,9 @@ def pdf_test(n=10):
     return {"pass": sum(x["ok"] for x in rows), "total": len(rows), "rows": rows}
 try: ADDON_API["pdf_test"] = pdf_test; API.update(ADDON_API)
 except NameError: pass
+def pdf_check() -> str:
+    """Generate 10 test PDFs (8 short, 2 long) and report pages, figures, size, time per topic (slow, uses quota)."""
+    r = pdf_test(10); return "PASS %d/%d\n" % (r["pass"], r["total"]) + "\n".join("%s | %s | %dp %dfig %dKB %ds %s" % (x["topic"], "OK" if x["ok"] else "FAIL", x["pages"], x["figs"], x["kb"], x["sec"], x["note"]) for x in r["rows"])
+try: reg_tool(pdf_check, "Run the 10-topic PDF quality test (slow, uses quota) - say 'pdf test chalao'", "utils"); _GRP.append((r"pdf[ _]?(test|check)", ["pdf_check"]))
+except NameError: pass
 print("✅ ax8b pdf test OK")
