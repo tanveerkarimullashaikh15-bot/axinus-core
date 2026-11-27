@@ -25,6 +25,8 @@ def ai_image(prompt, work):
         d = cf_image("Clean, realistic educational illustration, white background, soft lighting, high detail, no text, no labels, no watermark: " + prompt[:300])
         f = work + "/ai_" + uuid.uuid4().hex[:5] + ".jpg"; pathlib.Path(f).write_bytes(d); return f, "Illustration (AI-generated): " + prompt[:60]
     except Exception: return None
+def _fig(path, cap):
+    return "\n![%s](%s)\n" % (str(cap).replace("]", ")").replace("\n", " "), path)
 def _dia(title, text, out_dir):
     """diagram with role fallback (designer -> writer -> brain -> fast); last resort: no-LLM concept flow from the section's own headings."""
     last = ""
@@ -88,9 +90,9 @@ def add_visuals(secs, texts, work, stage=None):
             except Exception: pass
     for i in range(n):
         add = ""
-        if got.get(i): add += _f(got[i][0], got[i][1]); st["diagrams"] += 1
+        if got.get(i): add += _fig(got[i][0], got[i][1]); st["diagrams"] += 1
         if i in ph:
-            add += _f(ph[i][0][0], ph[i][0][1]); st["photos"] += 1; st["ai"] += ph[i][1] == "a"
+            add += _fig(ph[i][0][0], ph[i][0][1]); st["photos"] += 1; st["ai"] += ph[i][1] == "a"
         if not add and i in idx: st["missing"].append(secs[i]["title"][:30])
         if add:
             parts = re.split(r"(?<=\n)(?=## |### )", texts[i], 1) if False else None

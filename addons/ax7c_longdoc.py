@@ -293,11 +293,11 @@ def build_dc_chapters(work, tier="full"):
             parts = re.split(r"(?=### Solved Example)", md); return parts[0] + (parts[1] if len(parts) > 1 else "")
         return md
     ch.append({"title": "Basics of DC Circuits", "kick": "Introduction", "md": T["intro"], "section": "Foundations"})
-    figs = {"kirchhoff": "\n" + _f(fig_kcl(D("kcl"), (("I_1", 7), ("I_2", 2)), (("I_3", 4), ("I_4", 5))), "KCL at a junction: incoming (blue) and outgoing (red) currents") + _f(fig_kvl(D("kvl"), 12, (1, 2, 3)), "KVL in a closed series loop"),
-            "vsrc": _f(fig_vsources(D("vs")), "Ideal and practical voltage sources") + _f(fig_vi_curves(D("vi")), "V–I characteristics of ideal and practical sources (voltage source on the left, current source on the right)"),
-            "isrc": _f(fig_isources(D("is")), "Ideal and practical current sources"),
-            "srctrans": _f(fig_source_transform(D("stt"), 12, 3), "Source transformation: before and after (illustrative values)"), "mesh": _f(fig_mesh(D("mesh"), 12, 3, 6, 3, 9), "Mesh analysis circuit with labelled clockwise mesh currents (illustrative values)"),
-            "nodal": _f(fig_nodal(D("nod"), 6, 5, 10, 5, 4), "Nodal analysis circuit with reference node and node voltages (illustrative values)"), "star": _f(fig_star_delta(D("sdt"), (None, None, None), (None, None, None)), "Star and delta networks with terminals A, B, C")}
+    figs = {"kirchhoff": "\n" + _fig(fig_kcl(D("kcl"), (("I_1", 7), ("I_2", 2)), (("I_3", 4), ("I_4", 5))), "KCL at a junction: incoming (blue) and outgoing (red) currents") + _fig(fig_kvl(D("kvl"), 12, (1, 2, 3)), "KVL in a closed series loop"),
+            "vsrc": _fig(fig_vsources(D("vs")), "Ideal and practical voltage sources") + _fig(fig_vi_curves(D("vi")), "V–I characteristics of ideal and practical sources (voltage source on the left, current source on the right)"),
+            "isrc": _fig(fig_isources(D("is")), "Ideal and practical current sources"),
+            "srctrans": _fig(fig_source_transform(D("stt"), 12, 3), "Source transformation: before and after (illustrative values)"), "mesh": _fig(fig_mesh(D("mesh"), 12, 3, 6, 3, 9), "Mesh analysis circuit with labelled clockwise mesh currents (illustrative values)"),
+            "nodal": _fig(fig_nodal(D("nod"), 6, 5, 10, 5, 4), "Nodal analysis circuit with reference node and node voltages (illustrative values)"), "star": _fig(fig_star_delta(D("sdt"), (None, None, None), (None, None, None)), "Star and delta networks with terminals A, B, C")}
     for i, (key, name) in enumerate(TOPICS):
         md = T[key] + figs.get(key, "")
         if key in N: md += "\n\n## Solved Numerical Examples\n" + trim(N[key])

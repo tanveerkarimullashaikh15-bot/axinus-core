@@ -196,8 +196,8 @@ def workspace_run(project: str, path: str):
     r = json.loads(ws_run(project, path)); return ("Output:\n" + r.get("out", "")) if r.get("kind") == "text" else ("HTML page ready (Code Studio me Run dabao)" if r.get("kind") == "html" else "Error: " + str(r.get("error")))
 def workspace_list(project: str = "scratch"):
     fs = json.loads(ws_files(project))["files"]; return "Files in " + _pn(project) + ": " + (", ".join(f["path"] for f in fs) or "(empty)")
-for _f, _d, _w in [(artifact_create, "Save a finished HTML page / code / SVG / markdown as an Artifact shown in the Studio tab (title, kind=html|code|svg|markdown, content=full text)", "coder"), (workspace_write, "Create or overwrite a code file in a Code Studio project (project name, path like app.py, full content)", "coder"), (workspace_run, "Run a .py/.js/.sh file from a Code Studio project and return its output", "coder"), (build_project, "Build a COMPLETE multi-file website/app project in Code Studio from a request (writes all files, runs static checks, auto-fixes). Use for any 'build/create website/dashboard/app' request", "coder"), (workspace_list, "List files of a Code Studio project", "coder")]:
-    try: reg_tool(_f, _d, _w)
+for _fn_, _d, _w in [(artifact_create, "Save a finished HTML page / code / SVG / markdown as an Artifact shown in the Studio tab (title, kind=html|code|svg|markdown, content=full text)", "coder"), (workspace_write, "Create or overwrite a code file in a Code Studio project (project name, path like app.py, full content)", "coder"), (workspace_run, "Run a .py/.js/.sh file from a Code Studio project and return its output", "coder"), (build_project, "Build a COMPLETE multi-file website/app project in Code Studio from a request (writes all files, runs static checks, auto-fixes). Use for any 'build/create website/dashboard/app' request", "coder"), (workspace_list, "List files of a Code Studio project", "coder")]:
+    try: reg_tool(_fn_, _d, _w)
     except Exception: pass
 
 # ---------------- shared activity memory (chat + voice + phone) ----------------
