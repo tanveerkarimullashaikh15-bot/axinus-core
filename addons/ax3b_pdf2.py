@@ -80,7 +80,7 @@ def render_html(title, subtitle, summary, sections, image_path, diagrams, points
     t = THEMES.get(theme, THEMES["modern"])
     env = jinja2.Environment(autoescape=False)
     ctx = {"t": t, "title": _e(title), "subtitle": _e(subtitle), "stamp": now_ist().strftime("%d %b %Y, %I:%M %p IST"), "summary": _inl_h(summary) if summary else "",
-           "image": _b64(image_path) if image_path else "", "image_cap": _e(os.path.basename(image_path)) if image_path else "",
+           "image": _b64(image_path) if image_path else "", "image_cap": "Original image provided by user" if image_path else "",
            "sections": [{"h": _e(h) if h else "", "body": md_html(b)} for h, b in sections], "diagrams": [{"src": _b64(p), "cap": _e(c)} for p, c in diagrams], "points": [_inl_h(x) for x in points[:10]]}
     return env.from_string(TPL).render(**ctx)
 
