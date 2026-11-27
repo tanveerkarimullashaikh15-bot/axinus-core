@@ -169,7 +169,7 @@ _GRP = [
  (r"reason|solve|math|plan|strategy|analy|compare|explain|why|kyu", ["sambanova_heavy_reasoning", "run_code"]),
  (r"search|news|khabar|weather|mausam|price|rate|latest|web|http|www|gold|score", ["tavily_live_search", "get_news", "read_webpage", "state_info"]),
  (r"youtube|song|gaana|gana", ["youtube_search"]),
- (r"csv|excel|sheet|drive|file", ["read_csv", "search_drive", "read_doc"]),
+ (r"csv|excel|sheet|drive|file|save", ["read_csv", "search_drive", "read_doc", "save_to_drive"]),
  (r"quiz|mcq|test me", ["make_quiz"]),
  (r"diagram|flowchart|chart|graph|architecture", ["make_diagram", "make_rich_pdf", "make_long_pdf"]),
  (r"state|map|india|population|rajya|maharashtra", ["state_info", "get_news"]),
