@@ -59,7 +59,7 @@ def add_visuals(secs, texts, work, stage=None):
         for kind in ("auto",):
             try:
                 dp, cap = _dia(s["title"], texts[i][:1800], work); return i, dp, cap
-            except Exception as e: st["err"] = str(e)[:120]
+            except Exception as e: st["err"] = str(e)[:120]; print("[visuals] diagram fail:", st["err"])
         return i, None, None
     got = {}
     if True:
@@ -95,6 +95,7 @@ def add_visuals(secs, texts, work, stage=None):
         if add:
             parts = re.split(r"(?<=\n)(?=## |### )", texts[i], 1) if False else None
             texts[i] = texts[i].rstrip() + "\n" + add
+    print("[visuals] %(diagrams)d diagrams, %(photos)d photos (ai %(ai)d), missing %(missing)s, err: %(err)s" % st)
     return st
 print("✅ ax7d visuals OK")
 
@@ -108,6 +109,14 @@ def visuals_test():
     except Exception as e: R["diagram"] = "FAIL: " + str(e)[:140]
     try: p, c = _dia("Capacity growth chart", "India solar capacity GW: 2019 34, 2020 39, 2021 49, 2022 63, 2023 73, 2024 97, 2025 125", w); R["chart"] = "OK " + c
     except Exception as e: R["chart"] = "FAIL: " + str(e)[:140]
+    try:  # end-to-end: add_visuals -> markdown -> PDF -> count embedded images
+        secs = [{"title": "How solar panels work", "doc": "Solar"}, {"title": "Solar farms in India", "doc": "Solar"}]
+        body = "### Photovoltaic effect\n" + "Sunlight excites electrons in silicon cells and creates current. " * 8 + "\n\n### Inverter\nConverts **DC** to **AC** power for the grid. " * 6
+        texts = {0: body, 1: body.replace("Photovoltaic effect", "Land use")}
+        V = add_visuals(secs, texts, w); R["add_visuals"] = "%(diagrams)d diagrams, %(photos)d photos, err=%(err)s" % V
+        out = w + "/e2e.pdf"; build_doc(out, {"kicker": "t", "title": "Test", "subtitle": "", "footer": "t", "lines": [""], "notoc": True}, [{"title": s["title"], "kick": "S", "md": texts[i], "section": None} for i, s in enumerate(secs)], "compact")
+        from pypdf import PdfReader; n_img = sum(len(list(p.images)) for p in PdfReader(out).pages); R["pdf_images"] = "%d embedded images in test PDF" % n_img
+    except Exception as e: R["end_to_end"] = "FAIL: " + repr(e)[:200]
     R["engine"] = _ENGV() if "_ENGV" in globals() else "?"
     return R
 try: ADDON_API["visuals_test"] = visuals_test; API.update(ADDON_API)
