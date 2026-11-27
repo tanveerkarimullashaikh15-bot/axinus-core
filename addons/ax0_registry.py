@@ -13,12 +13,12 @@ LIMITS = {"groq": 200000, "cerebras": 1000000}
 BADM = re.compile(r"whisper|guard|tts|orpheus|embed|safeguard|rerank|allam|prompt", re.I)
 GROQ_DAILY = 200000
 ROLES = {
-    "brain":    [("groq", r"gpt-oss-120b"), ("cerebras", r"gpt-oss-120b"), ("cerebras", r"qwen.*235"), ("groq", r"qwen"), ("gemini", r"lite"), ("gemini", r"^(?!.*lite).*flash"), ("groq", r"gpt-oss-20b")],
+    "brain":    [("cerebras", r"gpt-oss-120b"), ("groq", r"gpt-oss-120b"), ("cerebras", r"qwen.*235"), ("gemini", r"lite"), ("gemini", r"^(?!.*lite).*flash"), ("groq", r"gpt-oss-20b")],
     "coder":    [("groq", r"qwen"), ("cerebras", r"qwen.*235"), ("cerebras", r"gpt-oss-120b"), ("groq", r"gpt-oss-120b"), ("gemini", r"^(?!.*lite).*flash"), ("gemini", r"lite")],
     "reasoner": [("cerebras", r"gpt-oss-120b"), ("cerebras", r"qwen.*235"), ("groq", r"gpt-oss-120b"), ("gemini", r"^(?!.*lite).*flash"), ("groq", r"qwen")],
     "phone":    [("groq", r"gpt-oss-20b"), ("cerebras", r"llama.*8b|llama3.1"), ("groq", r"qwen"), ("gemini", r"lite"), ("cerebras", r"gpt-oss-120b"), ("groq", r"gpt-oss-120b")],
-    "designer": [("gemini", r"lite"), ("groq", r"gpt-oss-20b"), ("cerebras", r"gpt-oss-120b"), ("groq", r"qwen"), ("gemini", r"^(?!.*lite).*flash")],
-    "writer":   [("gemini", r"^(?!.*lite).*flash"), ("cerebras", r"gpt-oss-120b"), ("groq", r"gpt-oss-120b"), ("gemini", r"lite"), ("groq", r"qwen")],
+    "designer": [("cerebras", r"gpt-oss-120b"), ("gemini", r"lite"), ("groq", r"gpt-oss-20b"), ("groq", r"qwen"), ("gemini", r"^(?!.*lite).*flash")],
+    "writer":   [("cerebras", r"gpt-oss-120b"), ("gemini", r"^(?!.*lite).*flash"), ("groq", r"gpt-oss-120b"), ("gemini", r"lite"), ("groq", r"qwen")],
     "fast":     [("groq", r"gpt-oss-20b"), ("cerebras", r"llama.*8b|llama3.1"), ("gemini", r"lite"), ("groq", r"qwen")],
 }
 IST0 = zoneinfo.ZoneInfo("Asia/Kolkata")
@@ -92,6 +92,7 @@ def _call(c, msgs, tools, role, mt, timeout):
 def _classify(e):
     s = str(e)
     if re.search(r"\b404\b|does not exist|decommission|no access|not found", s, re.I): return 3600
+    if re.search(r"request too large|reduce your message|context.?length|too many tokens", s, re.I): return 300
     if re.search(r"\b402\b|balance|payment|billing", s, re.I): return 21600
     if re.search(r"429|rate limit|quota|resource_exhausted|too many", s, re.I):
         m = re.search(r"try again in (?:(\d+)h)?\s*(?:(\d+)m)?\s*(?:([\d.]+)s)?", s)

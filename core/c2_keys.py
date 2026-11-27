@@ -34,7 +34,7 @@ if not os.path.exists(PROFILE_PATH):
 if not os.path.exists(CONTACTS_PATH):
     pathlib.Path(CONTACTS_PATH).write_text(json.dumps({"self": "+91XXXXXXXXXX", "papa": "+91XXXXXXXXXX", "sir": "teacher@example.com"}))
 
-GEMINI_MODELS = ["gemini-3.5-flash", "gemini-3.5-flash-lite", "gemini-3.6-flash", "gemini-2.5-flash"]
+GEMINI_MODELS = ["gemini-3.5-flash", "gemini-3.5-flash-lite", "gemini-3.6-flash"]
 LIVE_M = "gemini-3.8-live"
 GROQ_M = "openai/gpt-oss-120b"
 COHERE_M = "command-r-plus-08-2024"
