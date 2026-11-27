@@ -5,6 +5,7 @@ from concurrent.futures import ThreadPoolExecutor
 CUR_TASK = globals().get("CUR_TASK") or [""]
 LONG_DIR = globals().get("LONG_DIR") or ((ROOT_DIR + "/PDFs") if "ROOT_DIR" in globals() else "/tmp/ax_long")  # on Drive, under ROOT_DIR so links work
 WORK_DIR = "/tmp/ax_long"
+LASTV = globals().get("LASTV") or [None]
 _MC = globals().get("_MC") or {}
 
 @contextlib.contextmanager
@@ -131,11 +132,13 @@ def build_html(meta, chapters, toc_pages=None, tier="full"):
     st = {"fig": 0}; pb = "break-before:page" if tier == "full" else "margin-top:20px"; fs = {"full": 10.4, "std": 10.2, "dense": 9.4, "dense2": 9.0, "compact": 9.6, "tight": 9.2}.get(tier, 10.4); fh = {"full": 95, "std": 88, "dense": 58, "dense2": 50, "compact": 66, "tight": 58}.get(tier, 90)
     h = ['<!doctype html><html><head><meta charset="utf-8"><style>' + (CSS % {"fs": fs, "pb": pb, "fh": fh, "lh": 1.42 if tier == "dense2" else 1.52, "th": {"full": 135, "std": 125, "dense": 100, "dense2": 82}.get(tier, 90)}) + "</style></head><body>"]
     h.append('<div class="cover"><div class="k">%s</div><div class="bar"></div><h1>%s</h1><div class="s">%s</div><div class="m">%s</div></div>' % (_h.escape(meta.get("kicker", "")), _h.escape(meta["title"]), _h.escape(meta.get("subtitle", "")), "<br>".join(_h.escape(x) for x in meta.get("lines", []))))
+    _hs = h; h = [] if meta.get("notoc") else h
     h.append('<div class="toc"><h1>Table of Contents</h1>')
     for i, c in enumerate(chapters):
         if c.get("section"): h.append('<div class="sec">%s</div>' % _h.escape(c["section"]))
         h.append('<div class="r"><span class="t">%s</span><span class="d"></span><span class="p">%s</span></div>' % (_h.escape((c["kick"] + "  " if c.get("kick") else "") + c["title"]), (toc_pages or {}).get(i, "")))
     h.append("</div>")
+    h = _hs
     for c in chapters: h.append('<h1 class="ch" id="c%d">%s%s</h1>' % (chapters.index(c), ('<span class="kick">%s</span>' % _h.escape(c["kick"])) if c.get("kick") else "", _h.escape(c["title"]))); h.append(md2(c["md"], st))
     h.append("</body></html>"); return "\n".join(h)
 
@@ -321,16 +324,17 @@ def _json(t):
     m = re.search(r"\{.*\}", t, re.S)
     if not m: raise ValueError("no json")
     return json.loads(m.group(0))
-WSYS = ("You are an expert author of textbook-style study material. Write ONE section in markdown. Use ### subheadings. Explain concepts fully: definition, intuition, formulas (LaTeX only between $...$ inline and $$...$$ for display; simple LaTeX: \\frac, \\sqrt, \\sum, Greek letters, subscripts), step-by-step derivations, worked examples with realistic numbers (check all arithmetic), tables where useful, applications, common mistakes. "
+WSYS = ("You are an expert author of textbook-style study material. Write ONE section in markdown. Use ### subheadings. Explain concepts fully: definition, intuition, formulas ONLY if the topic is mathematical/scientific - for general, tech-news or social topics use comparison tables, timelines and concrete named examples INSTEAD of formulas; when FRESH WEB FACTS are given, use the real names, numbers and dates from them (LaTeX only between $...$ inline and $$...$$ for display; simple LaTeX: \\frac, \\sqrt, \\sum, Greek letters, subscripts), step-by-step derivations, worked examples with realistic numbers (check all arithmetic), tables where useful, applications, common mistakes. "
         "Use callout lines that each fit on ONE line: '> [DEF] ...', '> [FORMULA] $$...$$', '> [EXAM] ...'. Never repeat other sections. No title line. No code fences. Be accurate; if unsure of a fact, leave it out.")
 def make_generic_doc(topic, request, pages):
     pmin, pmax = pages if pages and pages[1] else (8, 12); target_pages = (pmin + pmax) / 2.0; wpp = 330
     with _stage("brain", "Planning outline", "") as st:
         sysm = "You plan long study documents. Reply with JSON only: {\"title\": str, \"subtitle\": str, \"sections\": [{\"title\": str, \"brief\": str (what to cover, 1-2 sentences), \"diagram\": bool}]}. Between 6 and 16 sections that cover the user's request completely, in logical order, without overlap. Follow any syllabus given exactly."
         t, mdl = _llm_call("writer", sysm, "Request:\n" + request[:6000] + "\nTarget length: about %d pages." % round(target_pages), mt=1800); plan = _json(t); st.model = mdl
-    secs = [s for s in plan.get("sections", []) if s.get("title")][:18]
+    small = pmax <= 8
+    secs = [s for s in plan.get("sections", []) if s.get("title")][:(max(3, int(target_pages) + 1) if small else 18)]
     if len(secs) < 3: raise RuntimeError("outline too short")
-    per = int(max(250, min(1100, target_pages * wpp / len(secs)))); texts = {}; ndone = [0]; facts = ""
+    per = int(max(120 if small else 250, min(1100, (target_pages - (1 if small else 0)) * (260 if small else wpp) / len(secs)))); texts = {}; ndone = [0]; facts = ""
     if re.search(r"latest|current|recent|news|trend|new |naya|abhi|202[4-9]|update", request + " " + topic, re.I) and "tavily_live_search" in globals():
         with _stage("utils", "Fetching live web facts", "") as st:
             try:
@@ -354,13 +358,14 @@ def make_generic_doc(topic, request, pages):
     for s_ in secs: s_["doc"] = plan.get("title", topic)
     if "add_visuals" in globals():
         with _stage("designer", "Adding diagrams and photos", "") as st:
-            try: V = add_visuals(secs, texts, work); st.note = "%(diagrams)d diagrams, %(photos)d photos" % V
+            try: V = add_visuals(secs, texts, work); LASTV[0] = V; st.note = "%(diagrams)d diagrams, %(photos)d photos" % V
             except Exception as e: st.note = "visuals failed: " + str(e)[:60]
     meta = {"kicker": "Study Material", "title": plan.get("title", topic)[:90], "subtitle": plan.get("subtitle", ""), "footer": plan.get("title", topic)[:60], "lines": ["Generated by AXINUS · " + datetime.datetime.now().strftime("%d %b %Y")]}
     chs = [{"title": s["title"], "kick": "Section %d" % (i + 1), "md": texts[i], "section": None} for i, s in enumerate(secs)]
     out = LONG_DIR + "/" + re.sub(r"\W+", "_", meta["title"])[:40] + "_" + datetime.datetime.now().strftime("%H%M%S") + ".pdf"; pathlib.Path(LONG_DIR).mkdir(parents=True, exist_ok=True)
-    eng, n, pm = build_doc(out, meta, chs, "full"); rounds = 0
-    while n < pmin and rounds < 2:
+    if small: meta["notoc"] = True
+    eng, n, pm = build_doc(out, meta, chs, "compact" if small else "full"); rounds = 0
+    while n < pmin and not small and rounds < 2:
         rounds += 1; need = pmin - n
         with _stage("writer", "Expanding to reach %d pages (round %d)" % (pmin, rounds), "") as st:
             order = sorted(range(len(secs)), key=lambda i: len(texts[i]))[:max(3, min(len(secs), need * 2))]
@@ -376,11 +381,17 @@ def make_generic_doc(topic, request, pages):
     for tier in ("std", "dense", "dense2", "compact", "tight"):
         if n <= pmax: break
         eng, n, pm = build_doc(out, meta, chs, tier)
+    for _ in range(3):
+        if n <= pmax: break
+        for c in chs:  # trim text (keep figures) by ~20%
+            ps = re.split(r"\n\n", c["md"]); keep = [x for x in ps if x.lstrip().startswith("![")]; txt = [x for x in ps if not x.lstrip().startswith("![")]
+            c["md"] = "\n\n".join(txt[:max(2, int(len(txt) * 0.8))] + keep)
+        eng, n, pm = build_doc(out, meta, chs, "tight")
     return out, ((tier, n, eng, pm, len(chs))), (pmin, pmax)
 
 def make_long_pdf(topic: str, request: str = "", pages: str = "") -> str:
     """Long, detailed, multi-page textbook-style PDF (chapters, notes, full study material): outline -> sections -> real equations, diagrams, TOC with page numbers, page-count check."""
-    full = str(request or "").strip()
+    LASTV[0] = None; full = str(request or "").strip()
     ct = CUR_TASK[0] if CUR_TASK else ""
     if len(ct) > len(full) and len(ct) > len(str(topic)): full = ct
     full = (str(topic) + "\n" + full).strip() if str(topic) not in full else full
@@ -395,7 +406,7 @@ def make_long_pdf(topic: str, request: str = "", pages: str = "") -> str:
     if not ok: return "Error: PDF verify fail - " + str(info)[:150]
     lk = file_link(out) if "file_link" in globals() else out
     note = "" if (n >= pmin and n <= pmax) else " (requested %d-%d pages; got %d - %s)" % (pmin, pmax, n, "sab content aa chuka, padding nahi ki" if n < pmin else "sabse compact layout bhi isse chhota nahi hua")
-    return "Saved: PDF %s (%d pages, %d chapters, TOC + page numbers + bookmarks, engine: %s, %s)%s\nPDF link: %s " % (out, n, nch, eng, mode, note, lk)
+    return "Saved: PDF %s (%d pages, %d chapters, TOC + page numbers + bookmarks, engine: %s, %s)%s\nPDF link: %s %s" % (out, n, nch, eng, mode, note, lk, ("\nVisuals: %(diagrams)d diagrams, %(photos)d photos%(e)s" % dict(LASTV[0], e=(" | diagram error: " + LASTV[0].get("err", "")) if LASTV[0].get("err") else "")) if LASTV[0] else "")
 
 try: reg_tool(make_long_pdf, "LONG detailed multi-page PDF: full chapter, complete notes, study material, textbook, 'N pages' (topic, request=full original user request, pages='10-15'). Real equations, circuit diagrams, TOC, page numbers. Use this instead of make_rich_pdf whenever the user wants detail, many pages, a chapter or a syllabus covered", "utils")
 except NameError: pass

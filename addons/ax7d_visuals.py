@@ -32,14 +32,14 @@ def gemini_image(prompt, work):
     return None
 def add_visuals(secs, texts, work, stage=None):
     """secs: [{title,...}], texts: {i: md}. Adds a diagram to every substantial section (retry once) + photos where a concrete subject exists. Returns stats."""
-    n = len(secs); st = {"diagrams": 0, "photos": 0, "ai": 0, "missing": []}; lock = []
+    n = len(secs); st = {"diagrams": 0, "photos": 0, "ai": 0, "missing": [], "err": ""}; lock = []
     idx = [i for i in range(n) if len(texts.get(i, "")) > 500][:12]
     def dia(i):
         s = secs[i]
         for kind in ("auto", "flowchart"):
             try:
                 dp, cap, mdl = make_diagram_core(s["title"] + "\n" + texts[i][:1800], kind); return i, dp, cap
-            except Exception: continue
+            except Exception as e: st["err"] = str(e)[:90]
         return i, None, None
     got = {}
     if "make_diagram_core" in globals():
