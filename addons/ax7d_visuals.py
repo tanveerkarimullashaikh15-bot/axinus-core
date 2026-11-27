@@ -30,29 +30,54 @@ def gemini_image(prompt, work):
                 import base64; f = work + "/gi_" + uuid.uuid4().hex[:5] + ".png"; pathlib.Path(f).write_bytes(base64.b64decode(d["data"])); return f, "Illustration (AI-generated)"
     except Exception: pass
     return None
+def _dia(title, text, out_dir):
+    """diagram with role fallback (designer -> writer -> brain -> fast); last resort: no-LLM concept flow from the section's own headings."""
+    last = ""
+    for role in ("designer", "writer", "brain", "fast"):
+        try:
+            raw, _ = llm(role, SPEC_SYS, "Kind hint: auto\nDescription:\n" + (title + "\n" + text)[:3500], timeout=60)
+            spec = _json_from(raw)
+            if not isinstance(spec, dict): raise RuntimeError("spec parse")
+            out = out_dir + "/dg_" + uuid.uuid4().hex[:6] + ".png"; ty = spec.get("type", "flowchart"); cap = str(spec.get("title", title))[:70]
+            if ty == "chart": _render_chart(spec, out); return out, cap
+            ns, es = _graph_from(spec)
+            if len(ns) < 2: raise RuntimeError("too small")
+            try: _render_dot(ns, es, out, lr=(ty == "timeline" or len(ns) > 7))
+            except Exception: _render_mpl_graph(ns, es, out)
+            return out, cap
+        except Exception as e: last = role + ": " + str(e)[:70]
+    hs = [re.sub(r"[*_`$]", "", h).strip()[:34] for h in re.findall(r"^#{2,3}\s+(.+)$", text, re.M)][:6]
+    if len(hs) < 3: hs = [re.sub(r"[*_`$|]", "", x).strip()[:34] for x in re.findall(r"^\|\s*\**([^|*]{3,40})\**\s*\|", text, re.M)][:6]
+    if len(hs) >= 3:
+        out = out_dir + "/dg_" + uuid.uuid4().hex[:6] + ".png"; ns = [title[:34]] + hs; es = [[ns[0], x, ""] for x in hs]
+        try: _render_dot(ns, es, out, lr=False)
+        except Exception: _render_mpl_graph(ns, es, out)
+        return out, "Overview: " + title[:50]
+    raise RuntimeError(last or "no diagram")
 def add_visuals(secs, texts, work, stage=None):
     """secs: [{title,...}], texts: {i: md}. Adds a diagram to every substantial section (retry once) + photos where a concrete subject exists. Returns stats."""
     n = len(secs); st = {"diagrams": 0, "photos": 0, "ai": 0, "missing": [], "err": ""}; lock = []
     idx = [i for i in range(n) if len(texts.get(i, "")) > 500][:12]
     def dia(i):
         s = secs[i]
-        for kind in ("auto", "flowchart"):
+        for kind in ("auto",):
             try:
-                dp, cap, mdl = make_diagram_core(s["title"] + "\n" + texts[i][:1800], kind); return i, dp, cap
-            except Exception as e: st["err"] = str(e)[:90]
+                dp, cap = _dia(s["title"], texts[i][:1800], work); return i, dp, cap
+            except Exception as e: st["err"] = str(e)[:120]
         return i, None, None
     got = {}
-    if "make_diagram_core" in globals():
+    if True:
         with ThreadPoolExecutor(3) as ex:
             for f in [ex.submit(dia, i) for i in idx]:
                 try: i, dp, cap = f.result(timeout=240); got[i] = (dp, cap) if dp else None
                 except Exception: pass
     qs = {}
     try:
-        t, _ = llm("fast", 'Reply JSON only: {"q": ["..."]}. For each section title give a short English Wikimedia Commons image search query for a REAL photo/picture of a concrete subject (organ, place, person-free object, landmark, machine, animal, plant), or "" if the topic is abstract (math, code, theory).',
+        t, _ = llm("writer", 'Reply JSON only: {"q": ["..."]}. For each section title give a short English Wikimedia Commons image search query for a REAL photo/picture of a concrete subject (organ, place, person-free object, landmark, machine, animal, plant), or "" if the topic is abstract (math, code, theory).',
                    "Document: %s\nSections:\n%s" % (secs[0].get("doc", ""), "\n".join("%d. %s" % (i + 1, secs[i]["title"]) for i in range(n))), mt=700)
         ql = json.loads(re.search(r"\{.*\}", t, re.S).group(0))["q"]; qs = {i: q for i, q in enumerate(ql[:n]) if q}
     except Exception: pass
+    if not qs: qs = {i: re.sub(r"\band\b|&", " ", secs[i]["title"]) for i in idx[:6]}; st["err"] += " (photo queries: titles)"
     ph = {}
     def photo(i):
         r = wiki_photo(qs[i], work)

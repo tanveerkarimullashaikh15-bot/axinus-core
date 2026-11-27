@@ -325,7 +325,7 @@ def _json(t):
     if not m: raise ValueError("no json")
     return json.loads(m.group(0))
 WSYS = ("You are an expert author of textbook-style study material. Write ONE section in markdown. Use ### subheadings. Explain concepts fully: definition, intuition, formulas ONLY if the topic is mathematical/scientific - for general, tech-news or social topics use comparison tables, timelines and concrete named examples INSTEAD of formulas; when FRESH WEB FACTS are given, use the real names, numbers and dates from them (LaTeX only between $...$ inline and $$...$$ for display; simple LaTeX: \\frac, \\sqrt, \\sum, Greek letters, subscripts), step-by-step derivations, worked examples with realistic numbers (check all arithmetic), tables where useful, applications, common mistakes. "
-        "Use callout lines that each fit on ONE line: '> [DEF] ...', '> [FORMULA] $$...$$', '> [EXAM] ...'. Never repeat other sections. No title line. No code fences. Be accurate; if unsure of a fact, leave it out.")
+        "Never start with a ### heading that repeats the section title. Use '> [EXAM]' ONLY for exam/study topics (omit it for news, trends, business); never restate the same fact as other sections. Use callout lines that each fit on ONE line: '> [DEF] ...', '> [FORMULA] $$...$$', '> [EXAM] ...'. Never repeat other sections. No title line. No code fences. Be accurate; if unsure of a fact, leave it out.")
 def make_generic_doc(topic, request, pages):
     pmin, pmax = pages if pages and pages[1] else (8, 12); target_pages = (pmin + pmax) / 2.0; wpp = 330
     with _stage("brain", "Planning outline", "") as st:
