@@ -19,17 +19,12 @@ def wiki_photo(q, work):
             return f, "Photo: %s (%s, %s, Wikimedia Commons)" % (re.sub(r"^File:|\.\w+$", "", p["title"])[:55], art, lic)
     except Exception: pass
     return None
-def gemini_image(prompt, work):
+def ai_image(prompt, work):
+    """FLUX.1 schnell via Cloudflare (free). Returns (path, caption) or None."""
     try:
-        if not globals().get("API_KEY"): return None
-        r = requests.post("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent", params={"key": API_KEY}, timeout=60,
-            json={"contents": [{"parts": [{"text": "Clean, realistic educational illustration, no text or labels: " + prompt[:300]}]}]})
-        for pt in r.json()["candidates"][0]["content"]["parts"]:
-            d = pt.get("inlineData")
-            if d:
-                import base64; f = work + "/gi_" + uuid.uuid4().hex[:5] + ".png"; pathlib.Path(f).write_bytes(base64.b64decode(d["data"])); return f, "Illustration (AI-generated)"
-    except Exception: pass
-    return None
+        d = cf_image("Clean, realistic educational illustration, white background, soft lighting, high detail, no text, no labels, no watermark: " + prompt[:300])
+        f = work + "/ai_" + uuid.uuid4().hex[:5] + ".jpg"; pathlib.Path(f).write_bytes(d); return f, "Illustration (AI-generated): " + prompt[:60]
+    except Exception: return None
 def _dia(title, text, out_dir):
     """diagram with role fallback (designer -> writer -> brain -> fast); last resort: no-LLM concept flow from the section's own headings."""
     last = ""
@@ -82,7 +77,7 @@ def add_visuals(secs, texts, work, stage=None):
     def photo(i):
         r = wiki_photo(qs[i], work)
         if r: return i, r, "w"
-        r = gemini_image(qs[i], work) if globals().get("AX_AI_IMAGES") else None
+        r = ai_image(qs[i], work)
         return i, r, "a"
     with ThreadPoolExecutor(3) as ex:
         for f in [ex.submit(photo, i) for i in list(qs)[:8] if i in idx or True]:

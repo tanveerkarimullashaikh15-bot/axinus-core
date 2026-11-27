@@ -8,17 +8,31 @@ SAMBA_DEAD = globals().get("SAMBA_DEAD") or [0]
 GEM_URL = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
 SAMBA_URL = "https://api.sambanova.ai/v1/chat/completions"
 CER_URL = "https://api.cerebras.ai/v1/chat/completions"
+CFA = sec("CF_ACCOUNT_ID", "CLOUDFLARE_ACCOUNT_ID"); CFT = sec("CF_API_TOKEN", "CLOUDFLARE_API_TOKEN")
+CF_URL = "https://api.cloudflare.com/client/v4/accounts/%s/ai/v1/chat/completions" % CFA
+CF_TXT = ["@cf/openai/gpt-oss-120b"]
+def cf_image(prompt, steps=6):
+    """FLUX.1 schnell on Cloudflare Workers AI (free ~10K neurons/day). Returns image bytes or raises."""
+    if not (CFA and CFT): raise RuntimeError("cloudflare key nahi")
+    import base64 as _b64
+    r = requests.post("https://api.cloudflare.com/client/v4/accounts/%s/ai/run/@cf/black-forest-labs/flux-1-schnell" % CFA, headers={"Authorization": "Bearer " + CFT}, json={"prompt": str(prompt)[:1800], "steps": steps}, timeout=90)
+    j = r.json()
+    b = (j.get("result") or {}).get("image")
+    if not b: raise RuntimeError("cf image: " + str(j.get("errors") or j)[:120])
+    data = _b64.b64decode(b)
+    if len(data) < 5000: raise RuntimeError("cf image too small")
+    return data
 CEREBRAS_KEY = globals().get("CEREBRAS_KEY") or sec("CEREBRAS_API_KEY", "CEREBRAS")
 LIMITS = {"groq": 200000, "cerebras": 1000000}
 BADM = re.compile(r"whisper|guard|tts|orpheus|embed|safeguard|rerank|allam|prompt", re.I)
 GROQ_DAILY = 200000
 ROLES = {
-    "brain":    [("cerebras", r"gpt-oss-120b"), ("groq", r"gpt-oss-120b"), ("cerebras", r"qwen.*235"), ("gemini", r"lite"), ("gemini", r"^(?!.*lite).*flash"), ("groq", r"gpt-oss-20b")],
+    "brain":    [("cerebras", r"gpt-oss-120b"), ("groq", r"gpt-oss-120b"), ("cerebras", r"qwen.*235"), ("gemini", r"lite"), ("gemini", r"^(?!.*lite).*flash"), ("groq", r"gpt-oss-20b"), ("cloudflare", r"gpt-oss-120b")],
     "coder":    [("groq", r"qwen"), ("cerebras", r"qwen.*235"), ("cerebras", r"gpt-oss-120b"), ("groq", r"gpt-oss-120b"), ("gemini", r"^(?!.*lite).*flash"), ("gemini", r"lite")],
-    "reasoner": [("cerebras", r"gpt-oss-120b"), ("cerebras", r"qwen.*235"), ("groq", r"gpt-oss-120b"), ("gemini", r"^(?!.*lite).*flash"), ("groq", r"qwen")],
+    "reasoner": [("cerebras", r"gpt-oss-120b"), ("cerebras", r"qwen.*235"), ("groq", r"gpt-oss-120b"), ("gemini", r"^(?!.*lite).*flash"), ("groq", r"qwen"), ("cloudflare", r"gpt-oss-120b")],
     "phone":    [("groq", r"gpt-oss-20b"), ("cerebras", r"llama.*8b|llama3.1"), ("groq", r"qwen"), ("gemini", r"lite"), ("cerebras", r"gpt-oss-120b"), ("groq", r"gpt-oss-120b")],
-    "designer": [("cerebras", r"gpt-oss-120b"), ("gemini", r"lite"), ("groq", r"gpt-oss-20b"), ("groq", r"qwen"), ("gemini", r"^(?!.*lite).*flash")],
-    "writer":   [("cerebras", r"gpt-oss-120b"), ("gemini", r"^(?!.*lite).*flash"), ("groq", r"gpt-oss-120b"), ("gemini", r"lite"), ("groq", r"qwen")],
+    "designer": [("cerebras", r"gpt-oss-120b"), ("gemini", r"lite"), ("groq", r"gpt-oss-20b"), ("groq", r"qwen"), ("gemini", r"^(?!.*lite).*flash"), ("cloudflare", r"gpt-oss-120b")],
+    "writer":   [("cerebras", r"gpt-oss-120b"), ("gemini", r"^(?!.*lite).*flash"), ("groq", r"gpt-oss-120b"), ("gemini", r"lite"), ("groq", r"qwen"), ("cloudflare", r"gpt-oss-120b")],
     "fast":     [("groq", r"gpt-oss-20b"), ("cerebras", r"llama.*8b|llama3.1"), ("gemini", r"lite"), ("groq", r"qwen")],
 }
 IST0 = zoneinfo.ZoneInfo("Asia/Kolkata")
@@ -39,6 +53,7 @@ def _cer_ids():
         if ids: R0["cids"] = ids; R0["ct"] = time.time(); return ids
     except Exception: pass
     return R0.get("cids") or ["gpt-oss-120b", "qwen-3-235b-a22b-instruct-2507", "llama3.1-8b"]
+def _cf_ids(): return list(CF_TXT) if (CFA and CFT) else []
 def _gem_ids(): return [m for m in GEMINI_MODELS if m not in DEAD]
 def _samba_ids():
     return []  # SambaNova removed (no free credits)
@@ -47,7 +62,7 @@ def _samba_ids():
     except Exception: return []
 def label(c): return c[0] + ":" + c[1]
 def cands(role):
-    src = {"groq": _groq_ids(), "gemini": _gem_ids(), "samba": _samba_ids(), "cerebras": _cer_ids()}; out = []
+    src = {"groq": _groq_ids(), "gemini": _gem_ids(), "samba": _samba_ids(), "cerebras": _cer_ids(), "cloudflare": _cf_ids()}; out = []
     for prov, pat in ROLES[role]:
         for i in src[prov]:
             if re.search(pat, i, re.I) and (prov, i) not in out: out.append((prov, i))
@@ -87,6 +102,7 @@ def _call(c, msgs, tools, role, mt, timeout):
         return r.choices[0].message, (getattr(u, "prompt_tokens", 0) or 0, getattr(u, "completion_tokens", 0) or 0)
     if prov == "gemini": return _http(GEM_URL, API_KEY, model, msgs, tools, mt, timeout)
     if prov == "cerebras": return _http(CER_URL, CEREBRAS_KEY, model, msgs, tools, mt, timeout)
+    if prov == "cloudflare": return _http(CF_URL, CFT, model, msgs, tools, mt, timeout)
     return _http(SAMBA_URL, SAMBA_KEY, model, msgs, tools, mt, timeout)
 
 def _classify(e):

@@ -215,7 +215,9 @@ def generate_image(prompt: str):
     """Image from text (Gemini image model, Pollinations fallback). Verified before reporting."""
     d = MEDIA_DIR + "/generated"; pathlib.Path(d).mkdir(parents=True, exist_ok=True); o = d + "/img_" + now_ist().strftime("%H%M%S") + ".png"; used = ""
     try:
-        data, used = _gemini_image(prompt); open(o, "wb").write(data)
+        try: data = cf_image(prompt); used = "cloudflare flux-1-schnell"
+        except Exception: data, used = _gemini_image(prompt)
+        open(o, "wb").write(data)
     except Exception as e1:
         try:
             r = requests.get("https://image.pollinations.ai/prompt/" + requests.utils.quote(prompt[:400]) + "?width=1024&height=1024&nologo=true", timeout=60)
