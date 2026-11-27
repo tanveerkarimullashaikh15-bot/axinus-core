@@ -43,7 +43,8 @@ def _dia(title, text, out_dir):
         except Exception as e: last = role + ": " + str(e)[:70]
     hs = [re.sub(r"[*_`$]", "", h).strip()[:34] for h in re.findall(r"^#{2,3}\s+(.+)$", text, re.M)][:6]
     if len(hs) < 3: hs = [re.sub(r"[*_`$|]", "", x).strip()[:34] for x in re.findall(r"^\|\s*\**([^|*]{3,40})\**\s*\|", text, re.M)][:6]
-    if len(hs) >= 3:
+    if len(hs) < 3: hs = list(dict.fromkeys(re.sub(r"[*_`$|]", "", x).strip()[:34] for x in re.findall(r"\*\*([^*\n]{3,34})\*\*", text)))[:6]
+    if len(hs) >= 2:
         out = out_dir + "/dg_" + uuid.uuid4().hex[:6] + ".png"; ns = [title[:34]] + hs; es = [[ns[0], x, ""] for x in hs]
         try: _render_dot(ns, es, out, lr=False)
         except Exception: _render_mpl_graph(ns, es, out)
