@@ -187,7 +187,7 @@ def pick_tools(task, tl):
 def brain_loop(task):
     mem = globals().get("facts_text", lambda: "")()
     up = _recent_img() or (LASTUP.get("path", "") if time.time() - LASTUP.get("t", 0) < 7200 else "")
-    sys_p = _AX_SYS0 + DELEG + ("\nMEMORY FACTS:\n" + mem if mem else "") + ("\nLAST UPLOADED FILE (use when user says this file/image): " + up if up else "") + "\nCURRENT TIME (IST): " + get_datetime() + "".join(f(task) for f in SYS_HOOKS)
+    sys_p = _AX_SYS0 + DELEG + ("\nMEMORY FACTS:\n" + mem if mem else "") + ("\nLAST UPLOADED FILE (use ONLY if the user explicitly refers to this file/image; otherwise ignore it): " + up if up else "") + "\nTRUTH RULE: never invent test results, file contents, tool outputs or reasons for failures. If a requested test/tool does not exist or did not run, say so plainly. Report only what a tool actually returned.\nCURRENT TIME (IST): " + get_datetime() + "".join(f(task) for f in SYS_HOOKS)
     heavy = len(str(task)) > 700 or bool(re.search(r"(?i)\b(phase|batch|audit|step\s*\d)\b.*\b(test|tests|report|build)", str(task)))
     if heavy: sys_p += "\nHEAVY TASK MODE: this is a long multi-part job. Work through it step by step using real tools, one part at a time; never invent results (write NOT TESTED if a tool is unavailable). The final answer must be a DETAILED structured report in plain text (no 2-3 sentence limit), listing each part with PASS/FAIL/evidence."
     msgs = [{"role": "system", "content": sys_p}] + HISTORY[-10:] + [{"role": "user", "content": task}]
