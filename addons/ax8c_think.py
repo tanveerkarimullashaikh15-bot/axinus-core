@@ -16,7 +16,7 @@ def brain_loop(task):
         try:
             hist = [h for h in HISTORY[-6:] if h.get("role") in ("user", "assistant") and isinstance(h.get("content"), str)]
             msgs = [{"role": "system", "content": _AXTSYS + "\nDate: " + get_datetime()}] + hist + [{"role": "user", "content": str(task)}]
-            m, _u = chat("think", msgs, None, 1800, 90, False); t = (m.content or "")
+            m, _u = chat("think", msgs, None, 1800, 30, False); t = (m.content or "")
             if t and len(t.strip()) > 2:
                 try: JOB["ntools"] = 0
                 except Exception: pass
@@ -34,7 +34,7 @@ def nvidia_check():
         for mid in m[:2]:
             t0 = time.time()
             try:
-                r = _call(("nvidia", mid), [{"role": "user", "content": "Say OK"}], None, "think", 20, 60)
+                r = _call(("nvidia", mid), [{"role": "user", "content": "Say OK"}], None, "think", 20, 25)
                 out.append("%s: OK %.1fs" % (mid, time.time() - t0))
             except Exception as e: out.append("%s: FAIL %s" % (mid, str(e)[:90]))
     return "\n".join(out)

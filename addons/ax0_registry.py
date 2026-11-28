@@ -43,9 +43,9 @@ LIMITS = {"groq": 200000, "cerebras": 1000000}
 BADM = re.compile(r"whisper|guard|tts|orpheus|embed|safeguard|rerank|allam|prompt", re.I)
 GROQ_DAILY = 200000
 ROLES = {
-    "think":    [("nvidia", r"kimi"), ("nvidia", r"deepseek"), ("nvidia", r"glm"), ("nvidia", r"nemotron"), ("cerebras", r"gpt-oss-120b"), ("gemini", r"^(?!.*lite).*flash"), ("groq", r"gpt-oss-120b"), ("cloudflare", r"gpt-oss-120b")],
-    "docw":     [("nvidia", r"glm"), ("nvidia", r"kimi"), ("nvidia", r"deepseek"), ("cerebras", r"gpt-oss-120b"), ("gemini", r"^(?!.*lite).*flash"), ("groq", r"gpt-oss-120b"), ("cloudflare", r"gpt-oss-120b")],
-    "docr":     [("nvidia", r"deepseek"), ("nvidia", r"kimi"), ("nvidia", r"glm"), ("cerebras", r"gpt-oss-120b"), ("cerebras", r"qwen.*235"), ("groq", r"gpt-oss-120b"), ("cloudflare", r"gpt-oss-120b")],
+    "think":    [("nvidia", r"nemotron.*ultra"), ("nvidia", r"kimi"), ("nvidia", r"glm"), ("nvidia", r"nemotron.*nano"), ("cerebras", r"gpt-oss-120b"), ("gemini", r"^(?!.*lite).*flash"), ("groq", r"gpt-oss-120b"), ("cloudflare", r"gpt-oss-120b")],
+    "docw":     [("nvidia", r"nemotron.*ultra"), ("nvidia", r"glm"), ("nvidia", r"kimi"), ("cerebras", r"gpt-oss-120b"), ("gemini", r"^(?!.*lite).*flash"), ("groq", r"gpt-oss-120b"), ("cloudflare", r"gpt-oss-120b")],
+    "docr":     [("nvidia", r"nemotron.*ultra"), ("nvidia", r"kimi"), ("nvidia", r"glm"), ("cerebras", r"gpt-oss-120b"), ("cerebras", r"qwen.*235"), ("groq", r"gpt-oss-120b"), ("cloudflare", r"gpt-oss-120b")],
     "brain":    [("cerebras", r"gpt-oss-120b"), ("groq", r"gpt-oss-120b"), ("cerebras", r"qwen.*235"), ("gemini", r"lite"), ("gemini", r"^(?!.*lite).*flash"), ("groq", r"gpt-oss-20b"), ("cloudflare", r"gpt-oss-120b")],
     "coder":    [("groq", r"qwen"), ("cerebras", r"qwen.*235"), ("cerebras", r"gpt-oss-120b"), ("groq", r"gpt-oss-120b"), ("gemini", r"^(?!.*lite).*flash"), ("gemini", r"lite")],
     "reasoner": [("cerebras", r"gpt-oss-120b"), ("cerebras", r"qwen.*235"), ("groq", r"gpt-oss-120b"), ("gemini", r"^(?!.*lite).*flash"), ("groq", r"qwen"), ("cloudflare", r"gpt-oss-120b")],
@@ -122,7 +122,7 @@ def _call(c, msgs, tools, role, mt, timeout):
     if prov == "gemini": return _http(GEM_URL, API_KEY, model, msgs, tools, mt, timeout)
     if prov == "cerebras": return _http(CER_URL, CEREBRAS_KEY, model, msgs, tools, mt, timeout)
     if prov == "cloudflare": return _http(CF_URL, CFT, model, msgs, tools, mt, timeout)
-    if prov == "nvidia": _nv_gate(); return _http(NV_URL, NVK, model, msgs, tools, mt, max(timeout, 90))
+    if prov == "nvidia": _nv_gate(); return _http(NV_URL, NVK, model, msgs, tools, mt, min(max(timeout, 20), 30))
     return _http(SAMBA_URL, SAMBA_KEY, model, msgs, tools, mt, timeout)
 
 def _classify(e):
