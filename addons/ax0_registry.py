@@ -11,6 +11,22 @@ CER_URL = "https://api.cerebras.ai/v1/chat/completions"
 CFA = sec("CF_ACCOUNT_ID", "CLOUDFLARE_ACCOUNT_ID"); CFT = sec("CF_API_TOKEN", "CLOUDFLARE_API_TOKEN")
 CF_URL = "https://api.cloudflare.com/client/v4/accounts/%s/ai/v1/chat/completions" % CFA
 CF_TXT = ["@cf/openai/gpt-oss-120b"]
+NVK = sec("NVIDIA_API_KEY", "NVIDIA_KEY"); NV_URL = "https://integrate.api.nvidia.com/v1/chat/completions"
+_NVC = {"t": 0, "ids": []}; _NVT = []
+def _nv_ids():
+    """NVIDIA Build free models (one key, ~40 RPM shared). Only strong text families; cached 1h."""
+    if not NVK: return []
+    if _NVC["ids"] and time.time() - _NVC["t"] < 3600: return _NVC["ids"]
+    try:
+        j = requests.get("https://integrate.api.nvidia.com/v1/models", headers={"Authorization": "Bearer " + NVK}, timeout=15).json()
+        _NVC["ids"] = [m["id"] for m in j.get("data", []) if re.search(r"kimi|deepseek|glm|nemotron|qwen|gpt-oss", m["id"], re.I) and not re.search(r"embed|rerank|guard|safety|vision|-vl|parse|clip|reward|translate|coder", m["id"], re.I)]
+        _NVC["t"] = time.time()
+    except Exception: pass
+    return _NVC["ids"]
+def _nv_gate():
+    now = time.time(); _NVT[:] = [t for t in _NVT if now - t < 60]
+    if len(_NVT) >= 32: raise RuntimeError("HTTP 429: local nvidia limit 32/min, retry in 20 s")
+    _NVT.append(now)
 def cf_image(prompt, steps=6):
     """FLUX.1 schnell on Cloudflare Workers AI (free ~10K neurons/day). Returns image bytes or raises."""
     if not (CFA and CFT): raise RuntimeError("cloudflare key nahi")
@@ -27,6 +43,9 @@ LIMITS = {"groq": 200000, "cerebras": 1000000}
 BADM = re.compile(r"whisper|guard|tts|orpheus|embed|safeguard|rerank|allam|prompt", re.I)
 GROQ_DAILY = 200000
 ROLES = {
+    "think":    [("nvidia", r"kimi"), ("nvidia", r"deepseek"), ("nvidia", r"glm"), ("nvidia", r"nemotron"), ("cerebras", r"gpt-oss-120b"), ("gemini", r"^(?!.*lite).*flash"), ("groq", r"gpt-oss-120b"), ("cloudflare", r"gpt-oss-120b")],
+    "docw":     [("nvidia", r"glm"), ("nvidia", r"kimi"), ("nvidia", r"deepseek"), ("cerebras", r"gpt-oss-120b"), ("gemini", r"^(?!.*lite).*flash"), ("groq", r"gpt-oss-120b"), ("cloudflare", r"gpt-oss-120b")],
+    "docr":     [("nvidia", r"deepseek"), ("nvidia", r"kimi"), ("nvidia", r"glm"), ("cerebras", r"gpt-oss-120b"), ("cerebras", r"qwen.*235"), ("groq", r"gpt-oss-120b"), ("cloudflare", r"gpt-oss-120b")],
     "brain":    [("cerebras", r"gpt-oss-120b"), ("groq", r"gpt-oss-120b"), ("cerebras", r"qwen.*235"), ("gemini", r"lite"), ("gemini", r"^(?!.*lite).*flash"), ("groq", r"gpt-oss-20b"), ("cloudflare", r"gpt-oss-120b")],
     "coder":    [("groq", r"qwen"), ("cerebras", r"qwen.*235"), ("cerebras", r"gpt-oss-120b"), ("groq", r"gpt-oss-120b"), ("gemini", r"^(?!.*lite).*flash"), ("gemini", r"lite")],
     "reasoner": [("cerebras", r"gpt-oss-120b"), ("cerebras", r"qwen.*235"), ("groq", r"gpt-oss-120b"), ("gemini", r"^(?!.*lite).*flash"), ("groq", r"qwen"), ("cloudflare", r"gpt-oss-120b")],
@@ -62,7 +81,7 @@ def _samba_ids():
     except Exception: return []
 def label(c): return c[0] + ":" + c[1]
 def cands(role):
-    src = {"groq": _groq_ids(), "gemini": _gem_ids(), "samba": _samba_ids(), "cerebras": _cer_ids(), "cloudflare": _cf_ids()}; out = []
+    src = {"groq": _groq_ids(), "gemini": _gem_ids(), "samba": _samba_ids(), "cerebras": _cer_ids(), "cloudflare": _cf_ids(), "nvidia": _nv_ids()}; out = []
     for prov, pat in ROLES[role]:
         for i in src[prov]:
             if re.search(pat, i, re.I) and (prov, i) not in out: out.append((prov, i))
@@ -103,6 +122,7 @@ def _call(c, msgs, tools, role, mt, timeout):
     if prov == "gemini": return _http(GEM_URL, API_KEY, model, msgs, tools, mt, timeout)
     if prov == "cerebras": return _http(CER_URL, CEREBRAS_KEY, model, msgs, tools, mt, timeout)
     if prov == "cloudflare": return _http(CF_URL, CFT, model, msgs, tools, mt, timeout)
+    if prov == "nvidia": _nv_gate(); return _http(NV_URL, NVK, model, msgs, tools, mt, max(timeout, 90))
     return _http(SAMBA_URL, SAMBA_KEY, model, msgs, tools, mt, timeout)
 
 def _classify(e):

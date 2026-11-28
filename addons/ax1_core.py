@@ -148,6 +148,7 @@ def route_task(t):
     if ri and len(t) < 160 and re.search(r"\bpdf\b|report", low) and re.search(r"\b(isko|ise|isse|iss|is image|is photo|is picture|this image|this photo|this picture|uploaded|attached|isme se)\b", low): return ("report", ri, t)
     if len(low) < 60 and re.search(r"visuals?[ _]?(test|check)", low): return ("direct", "visuals_check")
     if len(low) < 60 and re.search(r"pdf[ _]?(test|check)", low): return ("direct", "pdf_check")
+    if len(low) < 40 and re.search(r"nvidia[ _]?check", low): return ("direct", "nvidia_check")
     if re.search(r"daily briefing|\bbriefing\b|morning brief", low): return ("briefing",)
     return ("brain",)
 

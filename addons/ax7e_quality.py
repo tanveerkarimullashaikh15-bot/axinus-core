@@ -40,7 +40,7 @@ def qa_review(secs, texts, rewrite, nsrc, per=250):
         elif nsrc and len(re.findall(r"\d", t)) < 6 and len(t.split()) > 60: bad[i] = "too generic: add concrete numbers, names, dates and examples from the sources"
     try:
         brief = "\n".join("%d | %s | %d words | %s" % (i, secs[i]["title"], len(texts[i].split()), re.sub(r"\s+", " ", texts[i])[:150]) for i in range(len(secs)))
-        t, _ = _llm_call("writer", 'You review a draft document. Reply JSON only: {"fix":[{"i":int,"reason":str}]}. List ONLY sections that are off-topic, generic filler, repeat another section, OR lack depth (no concrete number, real example or mechanism). In reason say exactly what to add. Max 3. Empty list if fine.', brief, mt=300, timeout=60)
+        t, _ = _llm_call("docw", 'You review a draft document. Reply JSON only: {"fix":[{"i":int,"reason":str}]}. List ONLY sections that are off-topic, generic filler, repeat another section, OR lack depth (no concrete number, real example or mechanism). In reason say exactly what to add. Max 3. Empty list if fine.', brief, mt=300, timeout=60)
         for x in _json(t).get("fix", [])[:3]:
             if isinstance(x, dict) and isinstance(x.get("i"), int) and 0 <= x["i"] < len(secs): bad.setdefault(x["i"], str(x.get("reason", "weak"))[:80])
     except Exception as e: Q["notes"].append("critic skipped")
@@ -99,7 +99,7 @@ def deep_plan(topic, request, secs, srcs):
     try:
         sl = "\n".join("%d. %s - %s" % (i, s["title"], s.get("brief", "")) for i, s in enumerate(secs))
         ss = "\n".join("[%d] %s: %s" % (s["n"], s["title"], s["content"][:200]) for s in srcs[:8])
-        t, _ = _llm_call("reasoner", 'You are a senior analyst planning a document. Reply JSON only: {"thesis": str (1-2 sentences: the main insight), "sections": [{"i": int, "angle": str (what this section argues/explains that no other section does), "must": [str, str] (specific facts, numbers, names or examples to include), "src": [int] (source numbers to cite)}]}. Angles must be distinct; prefer concrete over generic.',
+        t, _ = _llm_call("docr", 'You are a senior analyst planning a document. Reply JSON only: {"thesis": str (1-2 sentences: the main insight), "sections": [{"i": int, "angle": str (what this section argues/explains that no other section does), "must": [str, str] (specific facts, numbers, names or examples to include), "src": [int] (source numbers to cite)}]}. Angles must be distinct; prefer concrete over generic.',
                          "Topic: %s\nRequest: %s\nSections:\n%s\nSources:\n%s" % (topic, str(request)[:800], sl, ss), mt=1400, timeout=90)
         P = _json(t); out = {}
         for x in P.get("sections", []):
@@ -126,7 +126,7 @@ def blueprint(title, request, secs, facts):
     sysm = ('You are a senior editor planning a document so every section adds NEW substance and no two sections overlap. Reply JSON only: {"thesis": str, "sections": [{"i": int, "angle": str (unique angle, 1 sentence), '
             '"must_include": [str] (2-4 concrete facts/numbers; add [n] source marks only if present in the source list), "example": str (one concrete real example), "pitfall": str (one limitation, myth or trade-off)}]}')
     try:
-        t, _ = _llm_call("reasoner", sysm, "Title: %s\nRequest: %s\nSections:\n%s\n%s" % (title, request[:1500], "\n".join("%d. %s - %s" % (i, s["title"], s.get("brief", "")) for i, s in enumerate(secs)), facts[:6000]), mt=2200, timeout=120)
+        t, _ = _llm_call("docr", sysm, "Title: %s\nRequest: %s\nSections:\n%s\n%s" % (title, request[:1500], "\n".join("%d. %s - %s" % (i, s["title"], s.get("brief", "")) for i, s in enumerate(secs)), facts[:6000]), mt=2200, timeout=120)
         bp = _json(t); out = {}
         for x in bp.get("sections", []):
             if isinstance(x, dict) and isinstance(x.get("i"), int):

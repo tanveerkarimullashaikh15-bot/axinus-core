@@ -337,7 +337,7 @@ def make_generic_doc(topic, request, pages):
     pmin, pmax = pages if pages and pages[1] else (8, 12); target_pages = (pmin + pmax) / 2.0; wpp = 330
     with _stage("brain", "Planning outline", "") as st:
         sysm = "You plan long study documents. Reply with JSON only: {\"title\": str, \"subtitle\": str, \"sections\": [{\"title\": str, \"brief\": str (what to cover, 1-2 sentences), \"diagram\": bool}]}. Between 6 and 16 sections that cover the user's request completely, in logical order, without overlap. Follow any syllabus given exactly."
-        t, mdl = _llm_call("writer", sysm, "Request:\n" + request[:6000] + "\nTarget length: about %d pages." % round(target_pages), mt=1800); plan = _json(t); st.model = mdl
+        t, mdl = _llm_call("docw", sysm, "Request:\n" + request[:6000] + "\nTarget length: about %d pages." % round(target_pages), mt=1800); plan = _json(t); st.model = mdl
     small = pmax <= 8
     secs = [s for s in plan.get("sections", []) if s.get("title")][:(max(3, int(target_pages) + 1) if small else 18)]
     if len(secs) < 3: raise RuntimeError("outline too short")
@@ -367,7 +367,7 @@ def make_generic_doc(topic, request, pages):
     def write(i, extra=""):
         extra = extra + BP.get(i, "")
         extra = PN.get(i, "") + extra; s = secs[i]; u = "Document: %s\nSection %d of %d: %s\nCover: %s\nTarget length: about %d words.%s\nUser's overall request (for context, follow its rules):\n%s" % (plan.get("title", topic), i + 1, len(secs), s["title"], s.get("brief", ""), per, extra, request[:2500]) + facts + (excerpts_for(FULL, s["title"] + " " + PN.get(i, "")) if FULL else "")
-        t, mdl = _llm_call("writer", WSYS, u, mt=min(4000, int(per * 2.2) + 400), timeout=120); return i, _delim(re.sub(r"```.*?```", "", t, flags=re.S)).strip()
+        t, mdl = _llm_call("docw", WSYS, u, mt=min(4000, int(per * 2.2) + 400), timeout=120); return i, _delim(re.sub(r"```.*?```", "", t, flags=re.S)).strip()
     with _stage("writer", "Writing %d sections" % len(secs), "") as st:
         with ThreadPoolExecutor(3) as ex:
             futs = [ex.submit(write, i) for i in range(len(secs))]
@@ -401,7 +401,7 @@ def make_generic_doc(topic, request, pages):
         with _stage("writer", "Expanding to reach %d pages (round %d)" % (pmin, rounds), "") as st:
             order = sorted(range(len(secs)), key=lambda i: len(texts[i]))[:max(3, min(len(secs), need * 2))]
             def grow(i):
-                t, _ = _llm_call("writer", WSYS, "Document: %s\nSection: %s\nHere is the current text. Rewrite it with substantially MORE depth (about %d words in total): add derivations, more worked numerical examples, a comparison table, common mistakes and exam-style questions. Keep all existing correct content.\n\n%s" % (plan.get("title", topic), secs[i]["title"], int(per * 1.7), texts[i][:6000]), mt=4000, timeout=120); return i, t
+                t, _ = _llm_call("docw", WSYS, "Document: %s\nSection: %s\nHere is the current text. Rewrite it with substantially MORE depth (about %d words in total): add derivations, more worked numerical examples, a comparison table, common mistakes and exam-style questions. Keep all existing correct content.\n\n%s" % (plan.get("title", topic), secs[i]["title"], int(per * 1.7), texts[i][:6000]), mt=4000, timeout=120); return i, t
             with ThreadPoolExecutor(3) as ex:
                 for f in [ex.submit(grow, i) for i in order]:
                     try: i, t = f.result(timeout=600); texts[i] = t if len(t) > len(texts[i]) else texts[i]

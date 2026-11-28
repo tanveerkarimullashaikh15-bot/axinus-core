@@ -30,7 +30,7 @@ def _fig(path, cap):
 def _dia(title, text, out_dir):
     """diagram with role fallback (designer -> writer -> brain -> fast); last resort: no-LLM concept flow from the section's own headings."""
     last = ""
-    for role in ("designer", "writer", "brain", "fast"):
+    for role in ("docw", "designer", "brain", "fast"):
         try:
             raw, _ = llm(role, SPEC_SYS, "Kind hint: " + ("chart" if re.search(r"chart|graph|growth|over the years|trend", title, re.I) else "auto") + "\nDescription:\n" + (title + "\n" + text)[:3500], timeout=60)
             spec = _json_from(raw)
@@ -71,7 +71,7 @@ def add_visuals(secs, texts, work, stage=None):
                 except Exception: pass
     qs = {}
     try:
-        t, _ = llm("writer", 'Reply JSON only: {"q": ["..."]}. For each section title give a short English Wikimedia Commons image search query for a REAL photo/picture of a concrete subject (organ, place, person-free object, landmark, machine, animal, plant), or "" if the topic is abstract (math, code, theory).',
+        t, _ = llm("docw", 'Reply JSON only: {"q": ["..."]}. For each section title give a short English Wikimedia Commons image search query for a REAL photo/picture of a concrete subject (organ, place, person-free object, landmark, machine, animal, plant), or "" if the topic is abstract (math, code, theory).',
                    "Document: %s\nSections:\n%s" % (secs[0].get("doc", ""), "\n".join("%d. %s" % (i + 1, secs[i]["title"]) for i in range(n))), mt=700)
         ql = json.loads(re.search(r"\{.*\}", t, re.S).group(0))["q"]; qs = {i: q for i, q in enumerate(ql[:n]) if q}
     except Exception: pass
