@@ -49,6 +49,9 @@ def _graph_from(spec):
 def _render_dot(ns, es, out, lr):
     if not shutil.which("dot"): raise RuntimeError("dot missing")
     ids = {n: "n%d" % i for i, n in enumerate(ns)}
+    _out = {}
+    for a_, b_, _l in es: _out[a_] = _out.get(a_, 0) + 1
+    if len(ns) <= 6 and len(es) <= len(ns) and all(v == 1 for v in _out.values()): lr = True  # plain chains read better left-to-right
     L = ["digraph G {", "rankdir=%s;" % ("LR" if lr else "TB"), 'bgcolor="white"; nodesep=0.35; ranksep=0.5;', 'node [shape=box, style="rounded,filled", fillcolor="#E8F1FB", color="#2F6690", fontname="Helvetica", fontsize=12, margin="0.18,0.1"];', 'edge [color="#5B7083", fontname="Helvetica", fontsize=10];']
     for n in ns: L.append('%s [label="%s"];' % (ids[n], _wrap(_esc(n))))
     if len(ns) > 6:  # snake layout: rows of 4 so the figure is readable (no 1800x94 strip)

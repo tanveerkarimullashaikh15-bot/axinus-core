@@ -398,6 +398,15 @@ def make_generic_doc(topic, request, pages):
     for tier in ("std", "dense", "dense2", "compact", "tight"):
         if n <= pmax: break
         eng, n, pm = build_doc(out, meta, chs, tier)
+    for _ in range(4):  # still too long: drop lowest-value figures (photos from the end first, then diagrams), keep charts
+        if n <= pmax: break
+        fig_re = re.compile(r"^!\[(.*?)\]\(.+?\)$"); lines = [(ci, li) for ci, c in enumerate(chs) for li, x in enumerate(c["md"].split("\n")) if fig_re.match(x.strip())]
+        cap = lambda ci, li: fig_re.match(chs[ci]["md"].split("\n")[li].strip()).group(1)
+        pick = [z for z in lines if re.match(r"(Photo|Illustration)", cap(*z))] or [z for z in lines if not re.search(r"chart|growth|trend|%|cagr", cap(*z), re.I)]
+        if len(lines) <= 3 or not pick: break
+        for ci, li in sorted(pick[-max(1, len(lines) // 5):], key=lambda z: -z[1]):
+            ls = chs[ci]["md"].split("\n"); del ls[li]; chs[ci]["md"] = "\n".join(ls)
+        eng, n, pm = build_doc(out, meta, chs, "tight")
     for _ in range(3):
         if n <= pmax: break
         for c in chs:  # trim text (keep figures) by ~20%
