@@ -40,8 +40,8 @@ def qa_review(secs, texts, rewrite, nsrc, per=250):
         elif nsrc and len(re.findall(r"\d", t)) < 6 and len(t.split()) > 60: bad[i] = "too generic: add concrete numbers, names, dates and examples from the sources"
     try:
         brief = "\n".join("%d | %s | %d words | %s" % (i, secs[i]["title"], len(texts[i].split()), re.sub(r"\s+", " ", texts[i])[:150]) for i in range(len(secs)))
-        t, _ = _llm_call("writer", 'You review a draft document. Reply JSON only: {"fix":[{"i":int,"reason":str}]}. List ONLY sections that are off-topic for their title, mostly generic filler, or repeat another section. Max 2. Empty list if fine.', brief, mt=300, timeout=60)
-        for x in _json(t).get("fix", [])[:2]:
+        t, _ = _llm_call("writer", 'You review a draft document. Reply JSON only: {"fix":[{"i":int,"reason":str}]}. List ONLY sections that are off-topic, generic filler, repeat another section, OR lack depth (no concrete number, real example or mechanism). In reason say exactly what to add. Max 3. Empty list if fine.', brief, mt=300, timeout=60)
+        for x in _json(t).get("fix", [])[:3]:
             if isinstance(x, dict) and isinstance(x.get("i"), int) and 0 <= x["i"] < len(secs): bad.setdefault(x["i"], str(x.get("reason", "weak"))[:80])
     except Exception as e: Q["notes"].append("critic skipped")
     for i, why in list(bad.items())[:3]:
@@ -105,6 +105,32 @@ def deep_plan(topic, request, secs, srcs):
         for x in P.get("sections", []):
             if isinstance(x, dict) and isinstance(x.get("i"), int):
                 out[x["i"]] = "\nDOCUMENT THESIS: %s\nYOUR ANGLE (cover only this, others cover the rest): %s\nMUST INCLUDE: %s\nCITE SOURCES: %s\n" % (str(P.get("thesis", ""))[:240], str(x.get("angle", ""))[:260], "; ".join(map(str, x.get("must", [])[:3]))[:300], ",".join(map(str, x.get("src", [])[:3])))
+        return out
+    except Exception: return {}
+def deep_sources(srcs, k=3, chars=2200):
+    """Read the full text of the top-k sources (parallel) and return numbered extracts for the writer."""
+    import bs4
+    from concurrent.futures import ThreadPoolExecutor
+    def one(s):
+        try:
+            h = requests.get(s["url"], timeout=12, headers={"User-Agent": "Mozilla/5.0"}).text
+            soup = bs4.BeautifulSoup(h, "html.parser")
+            for x in soup(["script", "style", "nav", "footer", "header", "aside"]): x.decompose()
+            tx = " ".join(p.get_text(" ", strip=True) for p in soup.find_all(["p", "li", "h2", "h3"]) if len(p.get_text(strip=True)) > 40)
+            return s["n"], re.sub(r"\s+", " ", tx)[:chars]
+        except Exception: return s["n"], ""
+    with ThreadPoolExecutor(3) as ex: res = [f.result() for f in [ex.submit(one, s) for s in srcs[:k]]]
+    return "\n".join("[%d] FULL-TEXT EXTRACT: %s" % (n, tx) for n, tx in res if len(tx) > 300)
+def blueprint(title, request, secs, facts):
+    """Reasoner pass BEFORE writing: one thesis + a distinct angle, key facts, example and pitfall per section -> returns {i: instruction text}."""
+    sysm = ('You are a senior editor planning a document so every section adds NEW substance and no two sections overlap. Reply JSON only: {"thesis": str, "sections": [{"i": int, "angle": str (unique angle, 1 sentence), '
+            '"must_include": [str] (2-4 concrete facts/numbers; add [n] source marks only if present in the source list), "example": str (one concrete real example), "pitfall": str (one limitation, myth or trade-off)}]}')
+    try:
+        t, _ = _llm_call("reasoner", sysm, "Title: %s\nRequest: %s\nSections:\n%s\n%s" % (title, request[:1500], "\n".join("%d. %s - %s" % (i, s["title"], s.get("brief", "")) for i, s in enumerate(secs)), facts[:6000]), mt=2200, timeout=120)
+        bp = _json(t); out = {}
+        for x in bp.get("sections", []):
+            if isinstance(x, dict) and isinstance(x.get("i"), int):
+                out[x["i"]] = "\nBLUEPRINT (follow it; do not repeat other sections): thesis: %s | this section's angle: %s | must include: %s | real example: %s | limitation: %s" % (str(bp.get("thesis", ""))[:160], str(x.get("angle", ""))[:200], "; ".join(map(str, x.get("must_include", [])))[:500], str(x.get("example", ""))[:200], str(x.get("pitfall", ""))[:200])
         return out
     except Exception: return {}
 print("✅ ax7e quality OK")

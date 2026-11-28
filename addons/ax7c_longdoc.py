@@ -356,7 +356,16 @@ def make_generic_doc(topic, request, pages):
     if SRCS and "deep_plan" in globals():
         with _stage("reasoner", "Planning angles and key facts per section", "") as st:
             PN = deep_plan(topic, request, secs, SRCS); st.note = "%d section plans" % len(PN)
+    BP = {}
+    if SRCS and "deep_sources" in globals():
+        with _stage("research", "Reading top sources in full", "") as st:
+            try: dx = deep_sources(SRCS); facts += ("\nFULL SOURCE EXTRACTS (more detail, same citation numbers):\n" + dx) if dx else ""; st.note = "extracts: %d chars" % len(dx)
+            except Exception as e: st.note = "deep read skipped: " + str(e)[:40]
+    if "blueprint" in globals():
+        with _stage("reasoner", "Planning sections (thesis, angles, facts)", "") as st:
+            BP = blueprint(plan.get("title", topic), request, secs, facts); st.note = "%d section plans" % len(BP)
     def write(i, extra=""):
+        extra = extra + BP.get(i, "")
         extra = PN.get(i, "") + extra; s = secs[i]; u = "Document: %s\nSection %d of %d: %s\nCover: %s\nTarget length: about %d words.%s\nUser's overall request (for context, follow its rules):\n%s" % (plan.get("title", topic), i + 1, len(secs), s["title"], s.get("brief", ""), per, extra, request[:2500]) + facts + (excerpts_for(FULL, s["title"] + " " + PN.get(i, "")) if FULL else "")
         t, mdl = _llm_call("writer", WSYS, u, mt=min(4000, int(per * 2.2) + 400), timeout=120); return i, _delim(re.sub(r"```.*?```", "", t, flags=re.S)).strip()
     with _stage("writer", "Writing %d sections" % len(secs), "") as st:
