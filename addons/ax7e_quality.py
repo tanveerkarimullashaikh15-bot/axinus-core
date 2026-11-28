@@ -37,13 +37,14 @@ def qa_review(secs, texts, rewrite, nsrc, per=250):
         t = texts.get(i, "")
         if "could not be generated" in t or re.search(r"\((described|image|diagram)\b[^)]*\)", t, re.I): bad[i] = "placeholder or picture-description text"
         elif len(t.split()) < per * 0.35: bad[i] = "too thin / too short"
+        elif nsrc and len(re.findall(r"\d", t)) < 6 and len(t.split()) > 60: bad[i] = "too generic: add concrete numbers, names, dates and examples from the sources"
     try:
         brief = "\n".join("%d | %s | %d words | %s" % (i, secs[i]["title"], len(texts[i].split()), re.sub(r"\s+", " ", texts[i])[:150]) for i in range(len(secs)))
         t, _ = _llm_call("writer", 'You review a draft document. Reply JSON only: {"fix":[{"i":int,"reason":str}]}. List ONLY sections that are off-topic for their title, mostly generic filler, or repeat another section. Max 2. Empty list if fine.', brief, mt=300, timeout=60)
         for x in _json(t).get("fix", [])[:2]:
             if isinstance(x, dict) and isinstance(x.get("i"), int) and 0 <= x["i"] < len(secs): bad.setdefault(x["i"], str(x.get("reason", "weak"))[:80])
     except Exception as e: Q["notes"].append("critic skipped")
-    for i, why in list(bad.items())[:2]:
+    for i, why in list(bad.items())[:3]:
         try:
             new = rewrite(i, "\nREVISION: the previous draft had this problem: %s. Write a complete, specific, non-repetitive version with concrete facts." % why)
             if len(new.split()) > len(texts[i].split()) * 0.6 or "could not be generated" in texts[i]: texts[i] = new; Q["rewritten"].append(secs[i]["title"][:30])
@@ -62,4 +63,48 @@ def qa_review(secs, texts, rewrite, nsrc, per=250):
         texts[i] = re.sub(r"\s?\[(\d{1,2})\]", _c, texts[i])
     LASTQ[0] = Q
     return Q
+def _strip_html(h):
+    h = re.sub(r"(?is)<(script|style|nav|footer|header|aside)[^>]*>.*?</\1>", " ", h); h = re.sub(r"(?s)<[^>]+>", " ", h)
+    import html as _hh; return re.sub(r"\s+", " ", _hh.unescape(h)).strip()
+def read_sources(srcs, k=3, cap=9000):
+    """Fetch fuller text of the top-k sources (Tavily extract, fallback plain GET). Returns {n: text}."""
+    full = {}; key = globals().get("TAVILY_KEY"); urls = [s["url"] for s in srcs[:k]]
+    if key and urls:
+        try:
+            r = requests.post("https://api.tavily.com/extract", headers={"Authorization": "Bearer " + key}, json={"api_key": key, "urls": urls}, timeout=25).json()
+            for it in r.get("results", []):
+                for s in srcs[:k]:
+                    if s["url"] == it.get("url") and it.get("raw_content"): full[s["n"]] = re.sub(r"\s+", " ", it["raw_content"])[:cap]
+        except Exception: pass
+    for s in srcs[:k]:
+        if s["n"] in full: continue
+        try:
+            h = requests.get(s["url"], headers={"User-Agent": "Mozilla/5.0 AXINUS"}, timeout=12).text
+            tx = _strip_html(h)
+            if len(tx) > 800: full[s["n"]] = tx[:cap]
+        except Exception: pass
+    return full
+def excerpts_for(full, query, k=3, size=800):
+    """Pick the k most relevant chunks of the fetched sources for this section."""
+    words = set(w for w in re.findall(r"[a-z]{4,}", query.lower()))
+    cands = []
+    for n, tx in full.items():
+        for j in range(0, len(tx), size):
+            ch = tx[j:j + size]; sc = sum(1 for w in words if w in ch.lower()) + len(re.findall(r"\d", ch)) * 0.02
+            cands.append((sc, n, ch))
+    cands.sort(key=lambda x: -x[0])
+    return "".join("\nSOURCE EXCERPT [%d]: %s" % (n, ch) for sc, n, ch in cands[:k] if sc > 0)
+def deep_plan(topic, request, secs, srcs):
+    """One reasoning pass: thesis + a distinct angle and must-include facts per section, so sections do not repeat or stay generic."""
+    try:
+        sl = "\n".join("%d. %s - %s" % (i, s["title"], s.get("brief", "")) for i, s in enumerate(secs))
+        ss = "\n".join("[%d] %s: %s" % (s["n"], s["title"], s["content"][:200]) for s in srcs[:8])
+        t, _ = _llm_call("reasoner", 'You are a senior analyst planning a document. Reply JSON only: {"thesis": str (1-2 sentences: the main insight), "sections": [{"i": int, "angle": str (what this section argues/explains that no other section does), "must": [str, str] (specific facts, numbers, names or examples to include), "src": [int] (source numbers to cite)}]}. Angles must be distinct; prefer concrete over generic.',
+                         "Topic: %s\nRequest: %s\nSections:\n%s\nSources:\n%s" % (topic, str(request)[:800], sl, ss), mt=1400, timeout=90)
+        P = _json(t); out = {}
+        for x in P.get("sections", []):
+            if isinstance(x, dict) and isinstance(x.get("i"), int):
+                out[x["i"]] = "\nDOCUMENT THESIS: %s\nYOUR ANGLE (cover only this, others cover the rest): %s\nMUST INCLUDE: %s\nCITE SOURCES: %s\n" % (str(P.get("thesis", ""))[:240], str(x.get("angle", ""))[:260], "; ".join(map(str, x.get("must", [])[:3]))[:300], ",".join(map(str, x.get("src", [])[:3])))
+        return out
+    except Exception: return {}
 print("✅ ax7e quality OK")
